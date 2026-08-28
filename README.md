@@ -8,6 +8,21 @@ The content rules live in `prompts/blueprint.md`; the full reasoning behind them
 is `docs/MASTER_BLUEPRINT.md`. Editing the prompt files changes the product.
 Editing `src/lib/` changes the plumbing.
 
+## Deploy
+
+Built as a container because the render step needs a real runtime: Chromium for
+the PDF, `pdftotext` for extraction, and a writable disk for the SQLite file and
+the generated documents. Serverless platforms cannot host it — their filesystem
+is ephemeral, the bundle cannot carry Chromium, and a generation takes minutes.
+
+```bash
+docker build -t summario .
+docker run -p 3000:3000 -v summario-data:/data --env-file .env summario
+```
+
+Mount a persistent volume on `/data`, or a redeploy wipes the accounts, the
+credit history and every generated PDF.
+
 ## Setup
 
 ```bash
@@ -121,6 +136,10 @@ of them proves depth; a document failing several is reliably weak.
   `/app/credits` are deliberately inert until there is a checkout behind them.
 - **Model ids and prices drift.** `npm run models` asks the API instead of
   trusting a hardcoded list.
+
+## License
+
+MIT — see `LICENSE`.
 
 ## Layout
 

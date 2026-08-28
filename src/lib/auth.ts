@@ -1,17 +1,42 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import fs from 'node:fs'
+import path from 'node:path'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { config } from './config'
 import { getUserByEmail, getUserById, type UserRow } from './db'
 
 const COOKIE = 'summario_session'
 const MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 
+let cachedSecret: string | null = null
+
+/**
+ * SESSION_SECRET if it is set; otherwise one generated on first boot and kept on
+ * the data volume.
+ *
+ * Self-hosting should not require inventing a secret before the app will start —
+ * that is a setup step people get wrong or skip. Sessions survive restarts
+ * because the file does, and deleting it signs everyone out. Set the env var
+ * instead when you want the secret managed outside the volume.
+ */
 function secret() {
-  const s = process.env.SESSION_SECRET
-  if (!s || s.length < 24) {
-    throw new Error('SESSION_SECRET is missing or too short. Run `npm run seed` to generate one.')
+  const fromEnv = process.env.SESSION_SECRET?.trim()
+  if (fromEnv && fromEnv.length >= 24) return fromEnv
+  if (cachedSecret) return cachedSecret
+
+  const file = path.join(config.dataDir, '.session-secret')
+  try {
+    const existing = fs.readFileSync(file, 'utf8').trim()
+    if (existing.length >= 24) return (cachedSecret = existing)
+  } catch {
+    /* first boot */
   }
-  return s
+
+  fs.mkdirSync(config.dataDir, { recursive: true })
+  cachedSecret = randomBytes(32).toString('base64url')
+  fs.writeFileSync(file, cachedSecret, { mode: 0o600 })
+  return cachedSecret
 }
 
 /* ------------------------------------------------------------- passwords */

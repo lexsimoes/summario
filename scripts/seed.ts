@@ -1,14 +1,14 @@
 /**
- * Create (or reset) the owner account and make sure SESSION_SECRET exists.
+ * Create (or reset) the owner account.
  *
  *   npm run seed -- --email you@example.com --password "…" --name "Lex"
  *
- * Re-running it with a new password just resets the password.
+ * Re-running it with a new password just resets the password. The session
+ * secret is not needed here — the app generates one on first boot and keeps it
+ * on the data volume.
  */
 import 'dotenv/config'
-import fs from 'node:fs'
-import path from 'node:path'
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { createUser, getUserByEmail, ledgerTotals } from '../src/lib/db'
 import { grantCredits, SIGNUP_GRANT } from '../src/lib/credits'
 import { hashPassword } from '../src/lib/auth'
@@ -18,17 +18,6 @@ function arg(name: string, fallback?: string) {
   const v = i > -1 ? process.argv[i + 1] : undefined
   if (v === undefined && fallback === undefined) throw new Error(`Missing --${name}`)
   return v ?? fallback!
-}
-
-// A missing SESSION_SECRET would make every login fail with an unhelpful error,
-// so generate one into .env before touching the database.
-const envPath = path.resolve('.env')
-const envText = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : ''
-if (!/^SESSION_SECRET=.+/m.test(envText)) {
-  const secret = randomBytes(32).toString('base64url')
-  fs.writeFileSync(envPath, `${envText.trimEnd()}\n\n# Signs the session cookie. Rotating it logs everyone out.\nSESSION_SECRET=${secret}\n`)
-  process.env.SESSION_SECRET = secret
-  console.log('SESSION_SECRET generated and written to .env')
 }
 
 const email = arg('email')

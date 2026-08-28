@@ -67,6 +67,30 @@ export function sliceSections(text: string, from?: string, to?: string) {
   return { text: text.slice(start, end), matched: true as const }
 }
 
+/**
+ * Pull a section range out of the scope the reader already wrote.
+ *
+ * Asking for "from" and "to" in their own fields was asking twice: someone who
+ * types "Chapter 7, sections 7.1 to 7.6" has already said it. Slicing matters —
+ * sending a whole book instead of a chapter roughly triples the cost of a
+ * document — so the range is worth having, just not worth a second question.
+ *
+ * A chapter number on its own ("Capítulo 7") is not a section marker and yields
+ * nothing, which correctly falls back to the whole extract.
+ */
+export function sectionsFromScope(scope: string): { from?: string; to?: string } {
+  if (!scope) return {}
+
+  // "7.1 to 7.6", "7.1 a 7.6", "7.1–7.6", "7.1 até 7.6"
+  const range = scope.match(
+    /(\d+(?:\.\d+)+)\s*(?:[-–—]|to|a|até|ate|until|through)\s*(\d+(?:\.\d+)+)/i,
+  )
+  if (range) return { from: range[1], to: range[2] }
+
+  const single = scope.match(/(\d+\.\d+)/)
+  return single ? { from: single[1] } : {}
+}
+
 /** Rough token estimate: ~3.6 chars/token for EN prose, less for PT. */
 export const estimateTokens = (s: string) => Math.ceil(s.length / 3.6)
 

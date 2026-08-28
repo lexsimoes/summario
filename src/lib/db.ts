@@ -211,6 +211,19 @@ export const listMaterials = (userId: string, limit = 200) =>
     .prepare('SELECT * FROM materials WHERE user_id = ? ORDER BY created_at DESC LIMIT ?')
     .all(userId, limit) as MaterialRow[]
 
+/**
+ * Materials sitting in a running state. Called on boot, where the answer is by
+ * definition "these were interrupted" — a process that just started cannot have
+ * anything in flight.
+ */
+export const listRunningMaterials = () =>
+  getDb()
+    .prepare(
+      `SELECT * FROM materials
+        WHERE status IN ('pending','researching','extracting','planning','generating','rendering','validating')`,
+    )
+    .all() as MaterialRow[]
+
 export function materialStats(userId: string) {
   return getDb()
     .prepare(

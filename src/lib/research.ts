@@ -71,7 +71,7 @@ export async function researchTopic(opts: {
       } as unknown as Anthropic.ToolUnion,
     ],
     messages: [{ role: 'user', content: instruction }],
-  })
+  }, { timeout: config.requestTimeoutMs, maxRetries: config.maxRetries })
 
   const text = res.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')

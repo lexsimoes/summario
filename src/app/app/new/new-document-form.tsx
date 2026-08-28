@@ -2,13 +2,13 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import type { Dict } from '@/lib/i18n'
-import type { DocumentType, SourceKind } from '@/lib/types'
+import type { SourceKind } from '@/lib/types'
 
 interface Props {
   t: Dict['app']['create']
   types: Dict['types']
   languages: Dict['languages']
-  cost: Record<DocumentType, number>
+  cost: number
   balance: number
 }
 
@@ -17,12 +17,8 @@ export function NewDocumentForm({ t, types, languages, cost, balance }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [source, setSource] = useState<SourceKind>('upload')
-  // Attaching a question bank is what turns the output into an exam review,
-  // so the price on screen has to react to the file input, not to a dropdown.
-  const [isReview, setIsReview] = useState(false)
 
-  const price = isReview ? cost.exam_review : cost.pocket_guide
-  const affordable = balance >= price
+  const affordable = balance >= cost
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -49,6 +45,7 @@ export function NewDocumentForm({ t, types, languages, cost, balance }: Props) {
       <div className="field">
         <label className="label" htmlFor="description">{t.scope}</label>
         <textarea className="textarea" id="description" name="description" placeholder={t.scopePh} />
+        <p className="hint">{t.scopeHint}</p>
       </div>
 
       <div className="field">
@@ -99,38 +96,11 @@ export function NewDocumentForm({ t, types, languages, cost, balance }: Props) {
       </fieldset>
 
       {source === 'upload' && (
-        <>
-          <div className="field" style={{ marginTop: 18 }}>
-            <label className="label" htmlFor="pdf">{t.pdf}</label>
-            <input className="file" id="pdf" name="pdf" type="file" accept="application/pdf" required />
-          </div>
-
-          <div className="grid g2" style={{ gap: 16, marginTop: 18 }}>
-            <div>
-              <label className="label" htmlFor="from">{t.from}</label>
-              <input className="input" id="from" name="from" placeholder="7.1" />
-            </div>
-            <div>
-              <label className="label" htmlFor="to">{t.to}</label>
-              <input className="input" id="to" name="to" placeholder="7.6" />
-            </div>
-          </div>
-          <p className="hint">{t.sliceHint}</p>
-        </>
+        <div className="field" style={{ marginTop: 18 }}>
+          <label className="label" htmlFor="pdf">{t.pdf}</label>
+          <input className="file" id="pdf" name="pdf" type="file" accept="application/pdf" required />
+        </div>
       )}
-
-      <div className="field" style={{ marginTop: 18 }}>
-        <label className="label" htmlFor="questions">{t.questions}</label>
-        <input
-          className="file"
-          id="questions"
-          name="questions"
-          type="file"
-          accept=".txt,.md,.csv"
-          onChange={(e) => setIsReview(Boolean(e.currentTarget.files?.length))}
-        />
-        <p className="hint">{t.questionsHint}</p>
-      </div>
 
       {error && <p className="error-note" style={{ marginTop: 20 }}>{error}</p>}
 
@@ -138,8 +108,8 @@ export function NewDocumentForm({ t, types, languages, cost, balance }: Props) {
         <div>
           <div className="stat-label">{t.cost}</div>
           <div className="row" style={{ gap: 8, marginTop: 4 }}>
-            <strong style={{ fontSize: 17 }}>{price} {price === 1 ? t.credit : t.creditsPl}</strong>
-            <span className="pill">{isReview ? types.exam_review : types.pocket_guide}</span>
+            <strong style={{ fontSize: 17 }}>{cost} {cost === 1 ? t.credit : t.creditsPl}</strong>
+            <span className="pill">{types.pocket_guide}</span>
           </div>
         </div>
         <button className="btn btn-primary btn-lg" type="submit" disabled={busy || !affordable}>

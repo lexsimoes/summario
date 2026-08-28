@@ -29,6 +29,14 @@ export const config = {
    */
   profile: env('ESTUDO_PROFILE', ''),
   maxOutputTokens: Number(env('ESTUDO_MAX_OUTPUT_TOKENS', '16000')),
+  /**
+   * Hard ceiling on a single API call. The SDK's own default is generous and a
+   * stalled call used to leave a job stuck on "writing" forever, holding the
+   * user's credit. Failing loudly is better: the job runner refunds on failure.
+   */
+  requestTimeoutMs: Number(env('ESTUDO_REQUEST_TIMEOUT_MS', String(8 * 60 * 1000))),
+  /** Retries are per call and multiply the wall clock — keep them low. */
+  maxRetries: Number(env('ESTUDO_MAX_RETRIES', '2')),
   dataDir: path.resolve(process.cwd(), env('ESTUDO_DATA_DIR', './data')),
   promptsDir: path.resolve(process.cwd(), 'prompts'),
   vendorDir: path.resolve(process.cwd(), 'public/vendor'),

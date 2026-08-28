@@ -5,13 +5,17 @@ import { requireUserApi } from '@/lib/api-auth'
 import { createMaterial, listMaterials } from '@/lib/db'
 import { canAfford, chargeCredits, COST } from '@/lib/credits'
 import { config } from '@/lib/config'
-import { cleanExtract, pdfToTextCached, sliceSections } from '@/lib/extract'
+import { cleanExtract, pdfToTextCached, sectionsFromScope, sliceSections } from '@/lib/extract'
 import { startJob } from '@/lib/jobs'
 import { themeFor } from '@/lib/design'
 import type { DocumentType, LanguageMode, SourceKind } from '@/lib/types'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
+
+// Part of the material id, so a document stays addressable if exam reviews come
+// back to the form later.
+const TYPE_SUFFIX: Record<DocumentType, string> = { pocket_guide: 'pg', exam_review: 'rev' }
 
 export async function GET() {
   const user = await requireUserApi()
@@ -28,19 +32,20 @@ export async function POST(req: Request) {
     const topic = String(form.get('topic') ?? '').trim()
     const description = String(form.get('description') ?? '').trim()
     const language = String(form.get('language') ?? 'bilingual') as LanguageMode
-    const from = String(form.get('from') ?? '').trim()
-    const to = String(form.get('to') ?? '').trim()
     const pdf = form.get('pdf')
-    const questions = form.get('questions')
+
+    // The section range is read out of the scope the user already wrote rather
+    // than asked for again in its own fields.
+    const { from, to } = sectionsFromScope(description)
 
     if (!topic) return NextResponse.json({ error: 'topic_required' }, { status: 400 })
 
     const hasUpload = pdf instanceof File && pdf.size > 0
     const sourceKind: SourceKind = hasUpload ? 'upload' : 'web'
 
-    const questionBank =
-      questions instanceof File && questions.size > 0 ? await questions.text() : undefined
-    const documentType: DocumentType = questionBank ? 'exam_review' : 'pocket_guide'
+    // Exam reviews (Type B) still exist in the pipeline and the CLI; the web form
+    // only offers the pocket guide, which is the shape almost every request has.
+    const documentType: DocumentType = 'pocket_guide'
     const cost = COST[documentType]
 
     if (!canAfford(user, cost)) {
@@ -60,7 +65,7 @@ export async function POST(req: Request) {
       await fs.writeFile(pdfPath, Buffer.from(await pdf.arrayBuffer()))
 
       const raw = await pdfToTextCached(pdfPath, config.dataDir)
-      const sliced = sliceSections(raw, from || undefined, to || undefined)
+      const sliced = sliceSections(raw, from, to)
       sectionMatched = sliced.matched
       sourceText = cleanExtract(sliced.text)
       if (sourceText.length < 500) {
@@ -74,7 +79,7 @@ export async function POST(req: Request) {
     // insert throws instead of updating. It stays deterministic, so regenerating
     // a document keeps its URL and its folder on disk.
     const slug = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const id = `${user.id.slice(0, 8)}-${slug}-${language}-${documentType === 'exam_review' ? 'rev' : 'pg'}`
+    const id = `${user.id.slice(0, 8)}-${slug}-${language}-${TYPE_SUFFIX[documentType]}`
 
     const theme = themeFor(topic)
 
@@ -84,7 +89,7 @@ export async function POST(req: Request) {
     })
     chargeCredits(user, id, cost)
     startJob(id, user.id, {
-      topic, description, language, documentType, theme, sourceKind, sourceText, questionBank,
+      topic, description, language, documentType, theme, sourceKind, sourceText,
     })
 
     return NextResponse.json({ id, sectionMatched, sourceKind, cost })

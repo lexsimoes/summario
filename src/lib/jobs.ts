@@ -1,4 +1,4 @@
-import { updateMaterial } from './db'
+import { listRunningMaterials, updateMaterial } from './db'
 import { refundCredits } from './credits'
 import { materialDir, runPipeline } from './pipeline'
 import type { GenerationRequest } from './types'
@@ -49,3 +49,30 @@ export function startJob(id: string, userId: string, req: GenerationRequest) {
 }
 
 export const isRunning = (id: string) => running.has(id)
+
+/**
+ * Fails and refunds anything left mid-generation by a previous process.
+ *
+ * Jobs live in this process's memory, so a restart — a deploy, a crash, an OOM —
+ * loses the worker while the row still says "generating". Without this the
+ * document sits on that status forever and the credit never comes back, which is
+ * exactly what a redeploy during a live generation produced.
+ *
+ * Called from instrumentation.ts, which Next runs once per server start.
+ */
+export function recoverStrandedJobs() {
+  const stranded = listRunningMaterials()
+  if (!stranded.length) return
+
+  for (const material of stranded) {
+    updateMaterial(material.id, {
+      status: 'failed',
+      stage_detail: '',
+      error:
+        'Generation was interrupted by a server restart. The credit has been refunded — start it again.',
+    })
+    refundCredits(material.user_id, material.id)
+  }
+
+  console.warn(`[summario] recovered ${stranded.length} interrupted generation(s) and refunded their credits`)
+}

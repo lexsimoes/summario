@@ -69,7 +69,7 @@ export async function call(opts: {
     max_tokens: opts.maxTokens ?? config.maxOutputTokens,
     system: opts.system,
     messages: [{ role: 'user', content: opts.content }],
-  })
+  }, { timeout: config.requestTimeoutMs, maxRetries: config.maxRetries })
 
   const text = res.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')

@@ -6,6 +6,16 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### Favicon
+The brand mark is the accented "i" of summar·i·o, and its stem is deliberately the
+same shape as the accent stripe every box in the generated document carries — one
+form, two readings. Deep violet ground so it holds against a light or a dark
+browser tab, with the amber dot of the intuition box, which is the element that
+opens every section of every guide.
+
+`icon.svg` for modern browsers, `favicon.ico` at 16/32/48 for the rest,
+`apple-icon.png` at 180 for iOS, and a theme colour for mobile browser chrome.
+
 ### Security headers, and a limit on login attempts
 Next ships no security headers by default, and a public site without them relies
 on the browser guessing right. Added HSTS, `nosniff`, `X-Frame-Options: DENY`,

@@ -65,10 +65,10 @@ export async function planDocument(req: GenerationRequest): Promise<{ plan: Plan
           'Rules: 2–4 parts. `units` is how many numbered sections (Type A) or questions ' +
           '(Type B) that part holds; 5–8 for Type A, 12–20 for Type B. `concepts` lists what ' +
           'each unit covers, in order, one entry per unit. Cover only what the source ' +
-          'actually contains.',
+          'actually contains.\n\n' +
+          'Reply with the JSON object and nothing else — no preamble, no code fence, no closing remark.',
       },
     ],
-    prefill: '{',
   })
   const plan = parseJson<Plan>(res.text)
   if (!plan.parts?.length) throw new Error('Planner returned no parts')
@@ -132,7 +132,6 @@ export async function generatePart(
       { type: 'text', text: sourceBlock(req), cache_control: { type: 'ephemeral' } },
       { type: 'text', text: instructions },
     ],
-    prefill: '<',
   })
 
   return {
@@ -145,15 +144,30 @@ export async function generatePart(
   }
 }
 
-/** Strip markdown fences and any shell tags the model leaked in anyway. */
+/**
+ * Strip markdown fences, any preamble before the first tag, and shell tags the
+ * model leaked in anyway. This is what replaces the assistant prefill: rather
+ * than forcing the reply to start with '<', accept that it might not and cut
+ * whatever came first.
+ */
 export function cleanFragment(html: string) {
-  return html
+  let out = html
     .replace(/^\s*```(?:html)?\s*/i, '')
     .replace(/```\s*$/i, '')
     .replace(/<\/?(?:html|head|body)[^>]*>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .trim()
+
+  // Drop conversational lead-in: "Here is part 2:" and the like.
+  const firstTag = out.indexOf('<')
+  if (firstTag > 0) out = out.slice(firstTag)
+
+  // And any trailing sign-off after the last closing tag.
+  const lastTag = out.lastIndexOf('>')
+  if (lastTag > -1 && lastTag < out.length - 1) out = out.slice(0, lastTag + 1)
+
+  return out.trim()
 }
 
 export function planCost(req: GenerationRequest) {

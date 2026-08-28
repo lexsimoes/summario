@@ -59,17 +59,16 @@ export async function call(opts: {
   system: Block[]
   content: Block[]
   maxTokens?: number
-  /** Forces the reply to start with this text (e.g. '<' to suppress preamble). */
-  prefill?: string
 }): Promise<CallResult> {
-  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: opts.content }]
-  if (opts.prefill) messages.push({ role: 'assistant', content: opts.prefill })
-
+  // No assistant prefill here on purpose: it is the obvious way to stop a model
+  // wrapping its answer in preamble, and the current models reject it outright
+  // ("does not support assistant message prefill"). The parsers below are
+  // tolerant instead, which works on every model.
   const res = await anthropic().messages.create({
     model: opts.model,
     max_tokens: opts.maxTokens ?? config.maxOutputTokens,
     system: opts.system,
-    messages,
+    messages: [{ role: 'user', content: opts.content }],
   })
 
   const text = res.content
@@ -79,7 +78,7 @@ export async function call(opts: {
 
   const u = res.usage
   return {
-    text: (opts.prefill ?? '') + text,
+    text,
     inputTokens: u.input_tokens,
     outputTokens: u.output_tokens,
     cachedTokens: (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0),

@@ -168,6 +168,18 @@ of them proves depth; a document failing several is reliably weak.
 - **Model ids and prices drift.** `npm run models` asks the API instead of
   trusting a hardcoded list.
 
+## Keeping the docs honest
+
+Three files carry the project's reasoning, and a change that contradicts one of
+them is not finished until that file is updated:
+
+- **`prompts/blueprint.md`** — the rules the generator must follow. Changing
+  behaviour without changing this means the code and the spec disagree, and the
+  spec is what the model actually reads.
+- **`docs/MASTER_BLUEPRINT.md`** — why the rules are what they are. Reversals are
+  marked in place rather than rewritten, so the earlier reasoning stays legible.
+- **`CHANGELOG.md`** — what changed and why, newest first.
+
 ## License
 
 MIT — see `LICENSE`.
@@ -177,6 +189,7 @@ MIT — see `LICENSE`.
 ```
 prompts/          blueprint (universal format), task prompts
 prompts/profiles/ per-field analogy registries, cross-links and badges
+docs/             the master blueprint — the reasoning behind the rules
 docs/             the master blueprint — the reasoning behind the rules
 src/app/          marketing page, login, dashboard, API routes
 src/components/   brand, nav, language toggle, the sample guide fragment

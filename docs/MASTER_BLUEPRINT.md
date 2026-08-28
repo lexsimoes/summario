@@ -7,7 +7,10 @@ It serves two roles at once:
 2. **System prompt base** — the content rules (Parts 2–5) are the generation prompt for the app itself.
 
 Owner: Lex (Alexandre Simoes) · Target role: AI Engineer
-Status: v1.0 — consolidated from ~10 study documents produced and refined iteratively.
+Status: **v1.1** — v1.0 was consolidated from ~10 study documents produced and refined
+iteratively. v1.1 records what changed once the app was built and deployed: the document
+family selector is gone, machine learning was lifted out of the blueprint into a domain
+profile, and a second sourcing mode was added. Changes are marked **[v1.1]** in place.
 
 > **Implementation note.** `prompts/blueprint.md` in this repo is the generation-facing
 > subset of this document — Parts 1–5 rewritten as instructions to the model, plus the
@@ -24,8 +27,14 @@ A personal study-material generator. The user provides:
 
 - **Topic** (e.g. "Convolutional Neural Networks")
 - **Description / scope** (e.g. "Chapter 7, sections 7.1–7.6")
-- **Support material** (PDF of the textbook, optionally a question bank)
+- **Support material** — a PDF, optionally a question bank. **[v1.1]** Optional now: with
+  no upload the app researches the topic on the open web and builds a cited extract, which
+  feeds the identical pipeline. The fidelity rule does not bend for it — see Part 6.4.
 - **Language mode** (EN / PT / Bilingual)
+
+**[v1.1]** There is no "field" or "area" input. The subject already arrives in the topic,
+the scope and the source material; asking for it again bought nothing but an accent colour,
+which is now derived from the topic.
 
 The app produces a coordinated set of study artifacts, all derived from one generation pass:
 
@@ -99,7 +108,12 @@ Cover (title, subtitle, source, how-to-use, reconstruction note if applicable)
 - Never contains formulas.
 - Length: 2–4 sentences.
 
-Analogies already established (reuse for consistency):
+**[v1.1]** The analogy registry below now lives in `prompts/profiles/machine-learning.md`,
+not in the blueprint. The rule — everyday, physical, natural in the target language, never
+translated — is universal and stays here; the *list* is specific to one field and moved out
+with it. See Part 12.
+
+Analogies already established for machine learning (reuse for consistency):
 
 | Concept | Analogy |
 |---|---|
@@ -175,7 +189,14 @@ beyond the answer itself, it failed.
   "apply augmentation to all splits" (false — training only), "K-means converges to the
   global optimum" (false — local).
 
-### 2.6 The AI ENGINEER badge
+### 2.6 The practitioner badge
+
+**[v1.1]** Renamed and made profile-driven. A badge exists only when a domain profile
+defines one; with no profile selected, **no badge is emitted at all**. Inventing a
+"what matters in practice" marker for a field whose practice you are guessing at is worse
+than leaving it out. The machine-learning version is below, and now lives in that profile.
+
+#### The AI ENGINEER badge (machine-learning profile)
 
 Applied to concepts the user will actually use on the job, not just on the exam. When
 applied, the THEORY box gains an extra sentence starting with "On the job:" connecting the
@@ -202,7 +223,12 @@ Engineer.
 ### 2.7 Cross-linking
 
 Actively connect topics across modules. This is a major quality differentiator.
-Established links:
+
+**[v1.1]** The rule is universal and stays here: a cross-link earns its place when it
+collapses two things into one — the same mechanism under two names, the same trade-off in a
+different currency. The *list* below is machine learning and moved to that profile.
+
+Established links (machine-learning profile):
 
 - Ridge (statistics) = weight decay (deep learning) — same mechanism, two names
 - Tree pruning α ≈ Lasso λ — same "tax on complexity" idea
@@ -319,14 +345,20 @@ Base size: 10–10.6pt body, line-height 1.45–1.5. Dense but readable.
 
 ### 4.2 Color system
 
-Each document family has an accent color; box colors are constant across families.
+**[v1.1]** The reader no longer picks this. Four palettes exist and one is chosen by a
+hash of the topic, so the same subject always looks the same and a library reads as a set.
+The old names were course families — a personal taxonomy leaking into a general tool, and
+two of the four mapped to the same colour anyway. Current palettes: violet `#5b3fb0`,
+teal `#0b6e5f`, cyan `#0e7490`, crimson `#8c2f39`.
 
-| Family | Accent | Part bar |
+Box colors are constant across palettes.
+
+| Palette (was: family) | Accent | Part bar |
 |---|---|---|
-| Supervised ML | `#0b6e5f` (teal) | `#10322c` |
-| Deep Learning | `#5b3fb0` (purple) | `#2e2058` |
-| Unsupervised | `#0e7490` (cyan) | `#0b4553` |
-| Foundations | `#0e7490` (cyan) | `#0b4553` |
+| teal (was Supervised ML) | `#0b6e5f` (teal) | `#10322c` |
+| violet (was Deep Learning) | `#5b3fb0` (purple) | `#2e2058` |
+| cyan (was Unsupervised) | `#0e7490` (cyan) | `#0b4553` |
+| crimson (was Foundations, which duplicated cyan) | `#8c2f39` | `#3d151a` |
 
 Box colors (constant):
 
@@ -348,7 +380,7 @@ visual signature).
 - **Part bar:** full-width dark bar, white uppercase text, letter-spacing .09em, border-radius 5px
 - **Section number:** accent-colored rounded square with white bold number
 - **Question number:** same, smaller, inline before the question text
-- **Badge (AI ENGINEER):** pill, light blue background `#e8f6ff`, border `#a9d6ee`, text `#0b5f8a`
+- **Badge (practitioner, e.g. AI ENGINEER):** pill, light blue background `#e8f6ff`, border `#a9d6ee`, text `#0b5f8a`
 - **Tables:** accent header with white text, alternating row background `#faf9fe`, 1px `#dfe3ea` borders
 - **Print rules:** `break-inside: avoid` on every box and table; `break-after: avoid` on headings
 
@@ -394,6 +426,7 @@ Accept-Language is the industry standard for good reason.
 
 | Stage | Work | LLM? |
 |---|---|---|
+| 0. Research **[v1.1]** | Only when no PDF is supplied: `web_search` finds sources and writes a cited extract | Yes — guide model |
 | 1. Ingestion | PDF → text extraction (`pdftotext -layout`), section location, page-offset detection | No — pure code |
 | 2. Pocket Guide | Extracted text + blueprint → structured HTML | Yes — strongest model |
 | 3. Derivatives | Pocket Guide → flashcards, quiz, cheat sheet | Yes — cheaper model |
@@ -428,6 +461,25 @@ regenerating one weak block instead of the whole document.
 - Rasterize 2–3 pages and visually inspect (`pdftoppm -jpeg`)
 
 ---
+
+### 6.4 Web sourcing **[v1.1]**
+
+With no uploaded material, `src/lib/research.ts` searches for authoritative sources with the
+API's `web_search` tool (USD 10 per 1000 searches) and writes a 2000–3500 word cited extract.
+That extract then feeds the identical pipeline.
+
+**The fidelity rule of 2.9 does not bend for this, and that is the whole design.** The
+generator still writes only from a supplied extract and still refuses to invent; the extract
+simply came from real pages instead of a PDF. Letting a model write a study guide from memory
+produces something plausible, unverifiable and occasionally wrong — in study material that is
+worse than useless, because the reader memorises the error.
+
+Two consequences that are not optional:
+
+- **Sources are injected into the HTML, never generated by the model.** Asking a model to
+  reproduce URLs it saw earlier is how you get citations that look right and resolve nowhere.
+- **A validator check fails a web-sourced document listing fewer than three sources.** A guide
+  that will not say where it came from is exactly what this mode exists to prevent.
 
 ## PART 7 — MODEL SELECTION & COST
 
@@ -483,10 +535,14 @@ single-digit dollars per chapter; at Opus, several times that. For personal use
 
 ```
 Material
-  id, topic, description, language (en|pt|bilingual),
+  id, user_id, topic, description, language (en|pt|bilingual),
   document_type (pocket_guide|exam_review),
-  source_file_ref, status (pending|generating|done|failed),
-  html, pdf_path, created_at
+  theme (violet|teal|cyan|crimson)         -- [v1.1] derived from the topic, was `family`
+  source_kind (upload|web), sources (json) -- [v1.1]
+  source_file_ref, status (pending|researching|extracting|planning|
+                           generating|rendering|validating|done|failed),
+  html, pdf_path, page_count, credits_cost, validation,
+  input_tokens, output_tokens, cached_tokens, created_at
 
 Flashcard
   id, material_id, front, back, tags
@@ -575,8 +631,29 @@ Items deliberately left unresolved, to decide during build:
    that a generated guide is shallow? Candidate signals: THEORY box average length, ratio of
    formulas to prose, presence of cross-links, analogy presence in every intuition box.
 
-> **Status of the open decisions as of the Phase 1 scaffold (2026-08-27):**
+> **Status as of 2026-08-28.**
 > #2 and #3 are implemented as rules in `prompts/task-exam-review.md`.
-> #4 has a first implementation in `src/lib/validate.ts` — mechanical checks derived from
-> the blueprint rules, run at the end of every pipeline run. #1 is still open: the renderer
-> ships with Georgia and the OFL candidates listed as fallbacks in the stylesheet.
+> #4 has a first implementation in `src/lib/validate.ts` — mechanical checks derived from the
+> blueprint rules, run at the end of every pipeline run, including language leakage and source
+> disclosure. It checks structure, not depth; the failure it cannot catch is plausible
+> shallowness, and a regression eval against the reference documents is still the open piece.
+> #1 is still open: the renderer ships with Georgia and the OFL candidates as fallbacks.
+
+## PART 12 — DOMAIN PROFILES **[v1.1]**
+
+The blueprint describes the *format*, and the format is subject-agnostic: the same structure
+works for deep learning, Roman law or pharmacology. Everything specific to one field lives in
+`prompts/profiles/<field>.md`:
+
+- the **analogy registry**, so a concept gets the same image across every document
+- the **established cross-links** worth making
+- an optional **practitioner badge**
+- **deep-dive calibration** — which concepts in this field genuinely warrant the box
+
+Selected with `ESTUDO_PROFILE`. Unset means only the universal rules apply and no badge is
+emitted, which is the right default for a subject with no profile yet. Adding a field is
+copying the machine-learning file and replacing its contents; no code changes.
+
+Why this split exists: the v1.0 blueprint assumed machine learning throughout, so a guide
+about anything else was generated against instructions to connect it to ridge regression.
+That is fine for a personal tool and fatal for one anybody can self-host.

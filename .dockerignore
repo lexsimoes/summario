@@ -1,0 +1,12 @@
+node_modules
+.next
+data
+.env
+.env.local
+.git
+.gitignore
+shots
+public/vendor/katex
+npm-debug.log*
+*.tgz
+.DS_Store

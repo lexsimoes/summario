@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p ${PORT:-3000}",
     "typecheck": "tsc --noEmit",
     "setup:katex": "node scripts/setup-katex.mjs",
     "setup:browser": "playwright install chromium",
@@ -22,7 +22,7 @@
     "better-sqlite3": "^12.4.1",
     "katex": "^0.16.22",
     "next": "^15.5.4",
-    "playwright": "^1.56.0",
+    "playwright": "1.62.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "dotenv": "^17.2.3"

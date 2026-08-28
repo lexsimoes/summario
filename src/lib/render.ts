@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { chromium } from 'playwright'
 import { config } from './config'
 
@@ -13,17 +14,23 @@ export async function renderPdf(opts: {
   basename?: string
 }): Promise<{ htmlPath: string; pdfPath: string }> {
   const base = opts.basename ?? 'document'
-  await fs.mkdir(opts.outDir, { recursive: true })
+  // Resolved, because a relative path makes an invalid file:// URL below.
+  const outDir = path.resolve(opts.outDir)
+  await fs.mkdir(outDir, { recursive: true })
 
-  const htmlPath = path.join(opts.outDir, `${base}.html`)
-  const pdfPath = path.join(opts.outDir, `${base}.pdf`)
+  const htmlPath = path.join(outDir, `${base}.html`)
+  const pdfPath = path.join(outDir, `${base}.pdf`)
   await fs.writeFile(htmlPath, opts.html, 'utf8')
-  await linkKatex(opts.outDir)
+  await linkKatex(outDir)
 
-  const browser = await chromium.launch()
+  // Self-hosters on a distro Chromium (or a Playwright image whose bundled
+  // build differs from the npm package) can point at it instead of a download.
+  const browser = await chromium.launch(
+    config.chromiumPath ? { executablePath: config.chromiumPath } : {},
+  )
   try {
     const page = await browser.newPage()
-    await page.goto(`file://${htmlPath}`, { waitUntil: 'load' })
+    await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'load' })
     // The boot script sets this flag once auto-render has finished. Printing
     // before it is set produces a PDF full of raw LaTeX.
     await page.waitForFunction('window.__katexDone === true', undefined, { timeout: 30_000 })

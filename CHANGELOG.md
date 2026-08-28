@@ -6,6 +6,37 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### A job can no longer hang forever, and a restart no longer eats a credit
+Two halves of the same failure. A generation sat on "writing" for several minutes
+and never moved, and nothing in the system could end it: the API calls had no
+timeout of their own, and jobs live in the server process's memory, so a deploy
+that restarts the container loses the worker while the row still says
+`generating`. The credit stayed spent.
+
+Now every Anthropic call carries an explicit timeout and retry budget
+(`ESTUDO_REQUEST_TIMEOUT_MS`, `ESTUDO_MAX_RETRIES`), so a stalled request fails
+the job — and the runner already refunds on failure. And on every server start
+`recoverStrandedJobs()` marks anything left mid-generation as failed and refunds
+it, with a message that says a restart interrupted it. Prevention and recovery,
+because either one alone leaves a way to lose a credit.
+
+### The render path made portable, and a latent file:// bug fixed
+`renderPdf` built its navigation URL as `file://` plus whatever path it was
+handed. In the app that path is always absolute, so this never fired in
+production — but any relative `outDir` produced `ERR_INVALID_URL` and killed the
+render. The out directory is now resolved and the URL built with `pathToFileURL`,
+which is also correct on Windows.
+
+Added `ESTUDO_CHROMIUM_PATH` for self-hosters whose Chromium is not the one
+Playwright downloads — a distro package, or an image whose bundled build differs
+from the npm package version. Empty, the default, keeps Playwright's own.
+
+### The new-material form lost two fields
+The question-bank upload asked for a file nobody has, and the from/to section
+inputs asked the user to do by hand what the scope sentence already says. The
+scope text is now parsed for a section range instead, so "3.2 to 3.7" works
+without two extra boxes. One field fewer between a topic and a document.
+
 ### Favicon
 The brand mark is the accented "i" of summar·i·o, and its stem is deliberately the
 same shape as the accent stripe every box in the generated document carries — one

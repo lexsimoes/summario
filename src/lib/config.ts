@@ -39,6 +39,8 @@ export const config = {
   maxRetries: Number(env('ESTUDO_MAX_RETRIES', '2')),
   dataDir: path.resolve(process.cwd(), env('ESTUDO_DATA_DIR', './data')),
   promptsDir: path.resolve(process.cwd(), 'prompts'),
+  /** Optional path to a Chromium binary; empty means Playwright's own. */
+  chromiumPath: env('ESTUDO_CHROMIUM_PATH', ''),
   vendorDir: path.resolve(process.cwd(), 'public/vendor'),
 }
 

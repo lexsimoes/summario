@@ -31,6 +31,9 @@ the analogy registry, the established cross-links, an optional practitioner badg
 
 ```bash
 ESTUDO_PROFILE=machine-learning   # or leave empty
+ESTUDO_REQUEST_TIMEOUT_MS=480000  # per API call; a stall fails the job and refunds
+ESTUDO_MAX_RETRIES=2
+# ESTUDO_CHROMIUM_PATH=/usr/bin/chromium  # only if not using Playwright's own
 ```
 
 With no profile set, only the universal rules apply, and no badge is emitted.

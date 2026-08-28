@@ -3,7 +3,10 @@ import { endSession } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
-export async function POST(req: Request) {
+export async function POST() {
   await endSession()
-  return NextResponse.redirect(new URL('/', req.url), { status: 303 })
+  // Relative for the same reason as /api/locale: behind a proxy the request URL
+  // is the container's internal address, and an absolute redirect built from it
+  // lands the visitor on localhost.
+  return new NextResponse(null, { status: 303, headers: { Location: '/' } })
 }

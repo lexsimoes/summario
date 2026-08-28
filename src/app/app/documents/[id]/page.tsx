@@ -21,7 +21,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
 
       <h1 className="title" style={{ margin: '14px 0 6px' }}>{m.topic}</h1>
       <p className="small" style={{ marginBottom: 30 }}>
-        {t.types[m.document_type]} · {t.languages[m.language]} · {t.families[m.family]}
+        {t.types[m.document_type]} · {t.languages[m.language]}
         {m.description ? ` · ${m.description}` : ''}
       </p>
 
@@ -30,6 +30,9 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
         initialStatus={m.status}
         t={{
           open: t.app.material.open,
+          openHtml: t.app.material.openHtml,
+          sources: t.app.material.sources,
+          sourcesLede: t.app.material.sourcesLede,
           checks: t.app.material.checks,
           checksLede: t.app.material.checksLede,
           usage: t.app.material.usage,

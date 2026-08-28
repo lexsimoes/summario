@@ -26,11 +26,25 @@ type Block = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' }
  * cache hit — the single largest cost lever in the pipeline.
  */
 export function stableSystem(taskPromptFile: string): Block[] {
-  return [
-    { type: 'text', text: loadPrompt('blueprint.md') },
-    { type: 'text', text: loadPrompt('analogies.md') },
-    { type: 'text', text: loadPrompt(taskPromptFile), cache_control: { type: 'ephemeral' } },
-  ]
+  const blocks: Block[] = [{ type: 'text', text: loadPrompt('blueprint.md') }]
+
+  if (config.profile) {
+    const profile = tryLoadPrompt(`profiles/${config.profile}.md`)
+    if (profile) blocks.push({ type: 'text', text: profile })
+  }
+
+  blocks.push({ type: 'text', text: loadPrompt(taskPromptFile), cache_control: { type: 'ephemeral' } })
+  return blocks
+}
+
+/** A missing profile is a configuration mistake, not a reason to fail a run. */
+function tryLoadPrompt(name: string) {
+  try {
+    return loadPrompt(name)
+  } catch {
+    console.warn(`[summario] domain profile not found: prompts/${name} — continuing without it`)
+    return null
+  }
 }
 
 export interface CallResult {

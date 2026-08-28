@@ -3,17 +3,22 @@ import { useEffect, useState } from 'react'
 import type { Status } from '@/lib/types'
 
 interface Check { name: string; ok: boolean; detail: string }
+interface Source { title: string; url: string }
 interface Payload {
   status: Status
   stage: string
   error: string | null
   pdfReady: boolean
+  htmlReady: boolean
   pages: number
+  sourceKind: 'upload' | 'web'
+  sources: Source[]
   validation: { html: { checks: Check[] }; pdf: { checks: Check[] } } | null
   usage: { input: number; output: number; cached: number }
 }
 interface Labels {
-  open: string; checks: string; checksLede: string; usage: string
+  open: string; openHtml: string; sources: string; sourcesLede: string
+  checks: string; checksLede: string; usage: string
   tokensIn: string; tokensOut: string; tokensCached: string; pages: string
   stages: Record<string, string>
 }
@@ -54,9 +59,14 @@ export function DocumentStatus({ id, initialStatus, t }: { id: string; initialSt
             {data?.stage && <span className="small">{data.stage}</span>}
           </div>
           {status === 'done' && (
-            <a className="btn btn-primary btn-sm" href={`/api/materials/${id}/pdf`} target="_blank" rel="noreferrer">
-              {t.open}
-            </a>
+            <span className="row" style={{ gap: 8 }}>
+              <a className="btn btn-ghost btn-sm" href={`/api/materials/${id}/html`}>
+                {t.openHtml}
+              </a>
+              <a className="btn btn-primary btn-sm" href={`/api/materials/${id}/pdf`} target="_blank" rel="noreferrer">
+                {t.open}
+              </a>
+            </span>
           )}
         </div>
 
@@ -78,6 +88,22 @@ export function DocumentStatus({ id, initialStatus, t }: { id: string; initialSt
           </div>
         )}
       </div>
+
+      {data && data.sources.length > 0 && (
+        <div className="card">
+          <h2 className="subtitle" style={{ margin: 0 }}>{t.sources}</h2>
+          <p className="small" style={{ marginBottom: 14 }}>{t.sourcesLede}</p>
+          <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.7 }}>
+            {data.sources.map((s) => (
+              <li key={s.url}>
+                <a href={s.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-ink)' }}>
+                  {s.title}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {checks.length > 0 && (
         <div className="card">

@@ -21,6 +21,13 @@ export const config = {
     /** Mechanical transformation (flashcards, cheat sheet). */
     get cheap() { return env('ESTUDO_MODEL_CHEAP', 'claude-haiku-4-5-20251001') },
   },
+  /**
+   * Optional domain profile from prompts/profiles/. Carries the analogy
+   * registry, cross-links and practitioner badge for one field. Unset means the
+   * blueprint's universal rules apply alone — the right default for a subject
+   * that has no profile yet.
+   */
+  profile: env('ESTUDO_PROFILE', ''),
   maxOutputTokens: Number(env('ESTUDO_MAX_OUTPUT_TOKENS', '16000')),
   dataDir: path.resolve(process.cwd(), env('ESTUDO_DATA_DIR', './data')),
   promptsDir: path.resolve(process.cwd(), 'prompts'),

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { DocumentType, LanguageMode, ValidationResult } from './types'
+import type { DocumentType, LanguageMode, SourceKind, ValidationResult } from './types'
 
 const run = promisify(execFile)
 const check = (name: string, ok: boolean, detail: string) => ({ name, ok, detail })
@@ -97,6 +97,7 @@ export function validateHtml(
   html: string,
   type: DocumentType,
   language: LanguageMode = 'bilingual',
+  sourceKind: SourceKind = 'upload',
 ): ValidationResult {
   const checks = []
   const sections = all(html, /<section class="sec"/g).length
@@ -162,6 +163,15 @@ export function validateHtml(
   checks.push(check('AI ENGINEER badges applied', badges >= 1, `${badges} badges`))
 
   checks.push(...languageChecks(html, language))
+
+  if (sourceKind === 'web') {
+    // A web-sourced guide that does not say where it came from is exactly the
+    // thing this mode was designed not to produce.
+    const listed = (html.match(/<div class="sources"[\s\S]*?<\/div>/) ?? [''])[0]
+    const count = (listed.match(/<li>/g) ?? []).length
+    checks.push(check('sources disclosed', count >= 3,
+      `${count} sources listed on the document (target 3+)`))
+  }
 
   return { ok: checks.every((c) => c.ok), checks }
 }

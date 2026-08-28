@@ -1,17 +1,30 @@
 export type LanguageMode = 'en' | 'pt' | 'bilingual'
 export type DocumentType = 'pocket_guide' | 'exam_review'
-export type Family = 'supervised' | 'deep_learning' | 'unsupervised' | 'foundations'
+/** Accent palette of the generated document. Derived from the topic, never asked. */
+export type Theme = 'violet' | 'teal' | 'cyan' | 'crimson'
+
+/** Where the source text came from. */
+export type SourceKind = 'upload' | 'web'
 export type Status =
-  | 'pending' | 'extracting' | 'planning' | 'generating' | 'rendering' | 'validating' | 'done' | 'failed'
+  | 'pending' | 'researching' | 'extracting' | 'planning' | 'generating'
+  | 'rendering' | 'validating' | 'done' | 'failed'
+
+export interface Source {
+  title: string
+  url: string
+}
 
 export interface GenerationRequest {
   topic: string
   description: string
   language: LanguageMode
   documentType: DocumentType
-  family: Family
-  /** Plain text extracted from the textbook / source PDF. */
+  theme: Theme
+  /** Plain text: extracted from the uploaded PDF, or researched from the web. */
   sourceText: string
+  sourceKind: SourceKind
+  /** Set when sourceKind is 'web' — disclosed on the cover and checked for. */
+  sources?: Source[]
   /** Optional question bank or answer key, plain text. */
   questionBank?: string
 }

@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 import fs from 'node:fs'
 import path from 'node:path'
 import { config } from './config'
-import type { DocumentType, Family, LanguageMode, Status } from './types'
+import type { DocumentType, LanguageMode, SourceKind, Status, Theme } from './types'
 
 let db: Database.Database | null = null
 
@@ -13,7 +13,33 @@ export function getDb() {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   db.exec(SCHEMA)
+  migrate(db)
   return db
+}
+
+/**
+ * Idempotent schema changes for databases created by an earlier version.
+ * `CREATE TABLE IF NOT EXISTS` never alters an existing table, so anything added
+ * after the first deploy has to be applied here or a live instance keeps the old
+ * shape and the app breaks on a column that is not there.
+ */
+function migrate(db: Database.Database) {
+  const columns = new Set(
+    (db.prepare('PRAGMA table_info(materials)').all() as { name: string }[]).map((c) => c.name),
+  )
+
+  // `family` was a machine-learning taxonomy the user had to pick from; it only
+  // ever chose an accent colour, and the colour is derived from the topic now.
+  if (columns.has('family') && !columns.has('theme')) {
+    db.exec("ALTER TABLE materials RENAME COLUMN family TO theme")
+    db.exec("UPDATE materials SET theme = 'violet' WHERE theme NOT IN ('violet','teal','cyan','crimson')")
+  }
+  if (!columns.has('source_kind')) {
+    db.exec("ALTER TABLE materials ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'upload'")
+  }
+  if (!columns.has('sources')) {
+    db.exec('ALTER TABLE materials ADD COLUMN sources TEXT')
+  }
 }
 
 const SCHEMA = `
@@ -34,7 +60,9 @@ CREATE TABLE IF NOT EXISTS materials (
   description TEXT NOT NULL DEFAULT '',
   language TEXT NOT NULL,
   document_type TEXT NOT NULL,
-  family TEXT NOT NULL,
+  theme TEXT NOT NULL DEFAULT 'violet',
+  source_kind TEXT NOT NULL DEFAULT 'upload',
+  sources TEXT,
   source_file_ref TEXT,
   status TEXT NOT NULL DEFAULT 'pending',
   stage_detail TEXT DEFAULT '',
@@ -100,7 +128,9 @@ export interface MaterialRow {
   description: string
   language: LanguageMode
   document_type: DocumentType
-  family: Family
+  theme: Theme
+  source_kind: SourceKind
+  sources: string | null
   source_file_ref: string | null
   status: Status
   stage_detail: string
@@ -149,14 +179,16 @@ export function createUser(u: { id: string; email: string; name: string; passwor
 
 export function createMaterial(m: {
   id: string; userId: string; topic: string; description: string; language: LanguageMode
-  documentType: DocumentType; family: Family; sourceFileRef?: string; creditsCost: number
+  documentType: DocumentType; theme: Theme; sourceKind: SourceKind
+  sourceFileRef?: string; creditsCost: number
 }) {
   getDb()
     .prepare(
-      `INSERT INTO materials (id, user_id, topic, description, language, document_type, family, source_file_ref, credits_cost)
-       VALUES (@id, @userId, @topic, @description, @language, @documentType, @family, @sourceFileRef, @creditsCost)
+      `INSERT INTO materials (id, user_id, topic, description, language, document_type, theme, source_kind, source_file_ref, credits_cost)
+       VALUES (@id, @userId, @topic, @description, @language, @documentType, @theme, @sourceKind, @sourceFileRef, @creditsCost)
        ON CONFLICT(user_id, topic, language, document_type) DO UPDATE SET
-         description = excluded.description, family = excluded.family,
+         description = excluded.description, theme = excluded.theme,
+         source_kind = excluded.source_kind, sources = NULL,
          source_file_ref = excluded.source_file_ref, credits_cost = excluded.credits_cost,
          status = 'pending', error = NULL, stage_detail = '', validation = NULL,
          updated_at = datetime('now')`,

@@ -3,6 +3,7 @@ import type { Status } from '@/lib/types'
 
 const tone: Record<Status, string> = {
   pending: 'pill',
+  researching: 'pill pill-run',
   extracting: 'pill pill-run',
   planning: 'pill pill-run',
   generating: 'pill pill-run',

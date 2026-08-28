@@ -1,5 +1,5 @@
-import { families } from './design'
-import type { Family } from './types'
+import { themes } from './design'
+import type { Theme } from './types'
 
 /**
  * The print stylesheet. Body serif, everything else sans, KaTeX for math.
@@ -7,8 +7,8 @@ import type { Family } from './types'
  * entry for Source Serif 4 / Crimson Pro / Literata once a font is chosen
  * (all OFL — the serif in Anthropic's identity is proprietary and cannot ship).
  */
-export function stylesheet(family: Family) {
-  const f = families[family]
+export function stylesheet(theme: Theme) {
+  const f = themes[theme]
   return `
 @page { size: A4; margin: 14mm 13mm 15mm 13mm; }
 
@@ -165,6 +165,20 @@ table.ref.long thead { display: table-header-group; }
   border-left: 3px solid var(--rule); padding-left: 3mm;
 }
 
+/* ---------- sources ---------- */
+.sources {
+  margin-top: 8mm; padding-top: 4mm; border-top: 1px solid var(--rule);
+  break-inside: avoid; page-break-inside: avoid;
+}
+.sources h4 {
+  margin: 0 0 2.5mm; font-size: 9pt; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--accent);
+}
+.sources ol { margin: 0; padding-left: 5mm; font-size: 8.8pt; }
+.sources li { margin: 1.4mm 0; }
+.sources a { color: var(--ink); text-decoration: none; }
+.src-url { color: var(--muted); font-family: var(--sans); font-size: 8pt; }
+
 code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: .92em; }
 strong { font-weight: 700; }
 `.trim()
@@ -193,7 +207,7 @@ const KATEX_BOOT = `
 </script>`
 
 /** Wrap generated fragments into the printable document. */
-export function buildDocument(opts: { title: string; family: Family; bodyHtml: string }) {
+export function buildDocument(opts: { title: string; theme: Theme; bodyHtml: string }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -201,7 +215,7 @@ export function buildDocument(opts: { title: string; family: Family; bodyHtml: s
 <title>${escapeHtml(opts.title)}</title>
 ${KATEX_BOOT}
 <style>
-${stylesheet(opts.family)}
+${stylesheet(opts.theme)}
 </style>
 </head>
 <body>

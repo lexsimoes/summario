@@ -61,9 +61,9 @@ separate this from a generic summary.
 - Plain, conversational language. **Always** a concrete analogy.
 - **Never** contains a formula. Never contains a symbol.
 - Length: 2–4 sentences.
-- Check the analogy registry first (supplied separately). If the concept is in
-  it, reuse that analogy verbatim in spirit — consistency across documents is a
-  feature. If it is not, invent one that is everyday, physical, and culturally
+- If a domain profile was supplied, check its analogy registry first. When the
+  concept is in it, reuse that analogy in spirit — consistency across documents
+  is a feature. Otherwise invent one that is everyday, physical, and culturally
   natural in the target language.
 - Never translate an analogy across languages. Regenerate it. An analogy is
   born in a language; a translated one reads translated.
@@ -78,14 +78,9 @@ separate this from a generic summary.
 - Written in the fixation language (Portuguese in bilingual mode).
 - Valid triggers: a counterintuitive result, a common misunderstanding, a
   mechanism that clicks only once explained properly.
-- Calibration examples of correct use:
-  - why stacking linear layers collapses (affine ∘ affine = affine)
-  - why weight decay is called *decay* (the (1−ηλ) factor)
-  - why dropout divides by (1−p) (expectation matching)
-  - why the residual connection solves degradation (identity becomes g(x)=0)
-  - why two 3×3 convolutions beat one 5×5 (fewer params + an extra ReLU)
-  - why the √d scaling exists in attention (softmax saturation)
-  - why training uses so much memory (backprop reuses forward activations)
+- The test: could an attentive reader have worked this out from the section
+  above it? If yes, the box is decoration. A supplied domain profile may list
+  calibration examples for its field.
 
 ### 2.3 The ANSWER box (Type B only)
 
@@ -113,44 +108,28 @@ The single most important quality lever in the whole system.
 - Only when a real, common distractor exists. Never manufacture one.
   Roughly one question in three, not every question.
 - One or two sentences: state the wrong belief, then correct it.
-- Calibration: "ReLU is linear" (false); "L2 zeroes coefficients" (false — only
-  L1); "apply augmentation to all splits" (false — training only); "K-means
-  converges to the global optimum" (false — local only).
+- Calibration: the belief has to be one a real student holds, not a strawman.
+  If you cannot name who believes it and why it is tempting, there is no trap.
 
-### 2.6 The AI ENGINEER badge
+### 2.6 The practitioner badge
 
-Applied to concepts the reader will use **on the job**, not just on the exam.
-When applied, the theory or deep-dive box gains one extra sentence opening with
-`On the job:` connecting the concept to building AI products.
+Only when a domain profile defines one. The badge marks concepts the reader will
+use in practice rather than only on the exam; a badged concept gains one extra
+sentence connecting it to real work.
 
-Earns the badge: embeddings, vector search, shared embedding spaces (CLIP);
-tokenization (→ context windows and API cost); attention Q/K/V (→ RAG and
-semantic search); autoregressive generation (→ latency and streaming);
-fine-tuning vs. feature extraction vs. prompting; scaling laws; instruction
-tuning and alignment; dimensionality reduction (→ vector-DB cost); t-SNE / UMAP
-(→ inspecting embedding spaces); anomaly detection (→ out-of-distribution
-inputs); generative models (→ why LLMs hallucinate); the learning-rate tuning
-workflow (→ fine-tuning in practice).
-
-Does **not** earn it: convergence proofs, derivations, exotic architectures,
-pure theory. Keep those at intuition level. The reader is explicitly not
-pursuing an ML-Research-Engineer track.
+With no profile supplied, emit no badges at all. Inventing a badge for a field
+whose practice you are guessing at is worse than leaving it out.
 
 ### 2.7 Cross-linking
 
-Actively connect topics across modules. This is a major quality differentiator
-and is expected in **every** document — aim for at least three cross-links.
-Established links (reuse; extend as the material warrants):
+Actively connect topics across the subject. This is a major quality
+differentiator and is expected in **every** document — aim for at least three.
 
-- Ridge (statistics) = weight decay (deep learning) — one mechanism, two names
-- Tree pruning α ≈ Lasso λ — the same "tax on complexity" idea
-- OOB error ≈ LOOCV — a free test-error estimate
-- CNN weight sharing ↔ RNN weight sharing — same principle, space vs. time
-- ResNet skip connections ↔ Transformer residual connections — same fix for depth
-- CNN fine-tuning ↔ BERT fine-tuning ↔ LLM fine-tuning — identical pattern
-- K-means ↔ EM — K-means is EM with hard assignment
-- Matrix completion ↔ recommender systems — same low-rank logic
-- Double descent ↔ scaling laws — why bigger models can generalize better
+A cross-link is not a reminder that two things exist in the same course. It earns
+its place when it collapses two things into one: the same mechanism under two
+names, the same trade-off in a different currency, a result that explains an
+earlier one. When a domain profile supplies established links, prefer those and
+extend them as the material warrants.
 
 ### 2.8 The closing table
 
@@ -164,8 +143,8 @@ Every document ends with a condensed reference table.
 
 ### 2.9 Fidelity rules
 
-- Ground every claim in the supplied source text. Do not import outside
-  material except for the cross-links and analogies above.
+- Ground every claim in the supplied source text. Do not import outside material
+  beyond cross-links within the same subject and the analogies you write.
 - If the source is ambiguous or a section is missing from the extract, say so
   in a `<p class="note">` rather than inventing content.
 - Formulas must be correct and must match the source's notation.
@@ -322,15 +301,11 @@ Nothing else. No emoji except the ✓ used for multi-select answers.
 
 ### Design tokens (informational — the renderer applies them)
 
-| Family | Accent | Part bar |
-|---|---|---|
-| Supervised ML | `#0b6e5f` | `#10322c` |
-| Deep Learning | `#5b3fb0` | `#2e2058` |
-| Unsupervised | `#0e7490` | `#0b4553` |
-| Foundations | `#0e7490` | `#0b4553` |
+The accent palette is chosen by the renderer from the topic — you never pick it
+and never mention it.
 
 Box colors are constant across families: intuition amber, deep-dive indigo,
-answer green, theory amber, trap red, recap tinted with the family accent.
+answer green, theory amber, trap red, recap tinted with the document accent.
 Body text is serif at 10–10.6pt with 1.45–1.5 line-height; headings, labels,
 badges, and tables are sans-serif; math is KaTeX.
 
@@ -348,6 +323,9 @@ Run this list against your own output. Fix, then return.
 6. At least three cross-links to other topics appear in the document.
 7. Language mode is respected box by box (Part 3 table), nothing reads
    translated, and in `en`/`pt` mode not one sentence of the other language survives.
-8. No literal `$` outside math delimiters. No raw LaTeX outside `$…$`/`$$…$$`.
-9. Only the class names in Part 4 are used; no `<style>`, `<script>`, or shell tags.
-10. Every claim traces to the supplied source.
+8. Nothing was imported from a field the source does not belong to — no borrowed
+   badge, no analogy from someone else's subject.
+9. No literal `$` outside math delimiters. No raw LaTeX outside `$…$`/`$$…$$`.
+10. Only the class names in Part 4 are used; no `<style>`, `<script>`, or shell tags.
+11. Every claim traces to the supplied source; where the source is thin or its
+    sources disagree, the document says so rather than filling the gap.

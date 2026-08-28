@@ -24,9 +24,18 @@ function briefing(req: GenerationRequest) {
         : 'ENGLISH — 100%: every element in English, including analogies and box labels. Not one ' +
           'Portuguese word survives.'
 
+  const provenance =
+    req.sourceKind === 'web'
+      ? 'SOURCE: assembled from public web sources, which are listed at the end of the document. ' +
+        'Say so in one line on the cover. The fidelity rule is unchanged: write only what the ' +
+        'extract supports, and where it is thin or the sources disagree, say that instead of ' +
+        'filling the gap.'
+      : 'SOURCE: the reader’s own material, extracted from the PDF they uploaded.'
+
   return [
     `TOPIC: ${req.topic}`,
     `SCOPE: ${req.description}`,
+    provenance,
     `DOCUMENT TYPE: ${req.documentType === 'exam_review' ? 'Type B — exam review' : 'Type A — pocket guide'}`,
     `LANGUAGE MODE: ${modeNote}`,
     `BOX LABELS TO USE VERBATIM: intuition="${l.intuition}", deep-dive="${l.deepdive}", ` +

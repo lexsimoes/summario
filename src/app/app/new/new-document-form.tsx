@@ -2,21 +2,21 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import type { Dict } from '@/lib/i18n'
-import type { DocumentType } from '@/lib/types'
+import type { DocumentType, SourceKind } from '@/lib/types'
 
 interface Props {
   t: Dict['app']['create']
   types: Dict['types']
   languages: Dict['languages']
-  families: Dict['families']
   cost: Record<DocumentType, number>
   balance: number
 }
 
-export function NewDocumentForm({ t, types, languages, families, cost, balance }: Props) {
+export function NewDocumentForm({ t, types, languages, cost, balance }: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [source, setSource] = useState<SourceKind>('upload')
   // Attaching a question bank is what turns the output into an exam review,
   // so the price on screen has to react to the file input, not to a dropdown.
   const [isReview, setIsReview] = useState(false)
@@ -51,44 +51,75 @@ export function NewDocumentForm({ t, types, languages, families, cost, balance }
         <textarea className="textarea" id="description" name="description" placeholder={t.scopePh} />
       </div>
 
-      <div className="grid g2" style={{ gap: 16, marginTop: 18 }}>
-        <div>
-          <label className="label" htmlFor="from">{t.from}</label>
-          <input className="input" id="from" name="from" placeholder="7.1" />
-        </div>
-        <div>
-          <label className="label" htmlFor="to">{t.to}</label>
-          <input className="input" id="to" name="to" placeholder="7.6" />
-        </div>
+      <div className="field">
+        <label className="label" htmlFor="language">{t.language}</label>
+        <select className="select" id="language" name="language" defaultValue="bilingual">
+          <option value="bilingual">{languages.bilingual}</option>
+          <option value="en">{languages.en}</option>
+          <option value="pt">{languages.pt}</option>
+        </select>
       </div>
-      <p className="hint">{t.sliceHint}</p>
 
-      <div className="grid g2" style={{ gap: 16, marginTop: 18 }}>
-        <div>
-          <label className="label" htmlFor="language">{t.language}</label>
-          <select className="select" id="language" name="language" defaultValue="bilingual">
-            <option value="bilingual">{languages.bilingual}</option>
-            <option value="en">{languages.en}</option>
-            <option value="pt">{languages.pt}</option>
-          </select>
+      {/* Source is a real fork in how the document is built, so it is a choice
+          you make, not a file field you happen to leave empty. */}
+      <fieldset className="field" style={{ border: 0, padding: 0, margin: '26px 0 0' }}>
+        <legend className="label" style={{ padding: 0 }}>{t.source}</legend>
+
+        <div className="grid g2" style={{ gap: 12 }}>
+          {([
+            { key: 'upload' as const, name: t.sourceUpload, hint: t.sourceUploadHint },
+            { key: 'web' as const, name: t.sourceWeb, hint: t.sourceWebHint },
+          ]).map((opt) => (
+            <label
+              key={opt.key}
+              className="card"
+              style={{
+                cursor: 'pointer',
+                padding: '14px 16px',
+                borderColor: source === opt.key ? 'var(--accent)' : undefined,
+                background: source === opt.key ? 'var(--accent-tint)' : 'var(--surface)',
+                borderRadius: 'var(--r-m)',
+              }}
+            >
+              <span className="row" style={{ gap: 9, marginBottom: 6 }}>
+                <input
+                  type="radio"
+                  name="sourceMode"
+                  value={opt.key}
+                  checked={source === opt.key}
+                  onChange={() => setSource(opt.key)}
+                  style={{ accentColor: 'var(--accent)' }}
+                />
+                <span style={{ fontWeight: 650, fontSize: 14.5 }}>{opt.name}</span>
+              </span>
+              <span className="small" style={{ display: 'block', margin: 0 }}>{opt.hint}</span>
+            </label>
+          ))}
         </div>
-        <div>
-          <label className="label" htmlFor="family">{t.family}</label>
-          <select className="select" id="family" name="family" defaultValue="deep_learning">
-            <option value="deep_learning">{families.deep_learning}</option>
-            <option value="supervised">{families.supervised}</option>
-            <option value="unsupervised">{families.unsupervised}</option>
-            <option value="foundations">{families.foundations}</option>
-          </select>
-        </div>
-      </div>
+      </fieldset>
+
+      {source === 'upload' && (
+        <>
+          <div className="field" style={{ marginTop: 18 }}>
+            <label className="label" htmlFor="pdf">{t.pdf}</label>
+            <input className="file" id="pdf" name="pdf" type="file" accept="application/pdf" required />
+          </div>
+
+          <div className="grid g2" style={{ gap: 16, marginTop: 18 }}>
+            <div>
+              <label className="label" htmlFor="from">{t.from}</label>
+              <input className="input" id="from" name="from" placeholder="7.1" />
+            </div>
+            <div>
+              <label className="label" htmlFor="to">{t.to}</label>
+              <input className="input" id="to" name="to" placeholder="7.6" />
+            </div>
+          </div>
+          <p className="hint">{t.sliceHint}</p>
+        </>
+      )}
 
       <div className="field" style={{ marginTop: 18 }}>
-        <label className="label" htmlFor="pdf">{t.pdf}</label>
-        <input className="file" id="pdf" name="pdf" type="file" accept="application/pdf" required />
-      </div>
-
-      <div className="field">
         <label className="label" htmlFor="questions">{t.questions}</label>
         <input
           className="file"

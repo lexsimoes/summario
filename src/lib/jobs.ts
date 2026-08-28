@@ -29,6 +29,7 @@ export function startJob(id: string, userId: string, req: GenerationRequest) {
         html: result.html,
         pdf_path: result.pdfPath,
         page_count: result.pageCount,
+        sources: result.sources.length ? JSON.stringify(result.sources) : null,
         validation: JSON.stringify({ html: result.htmlValidation, pdf: result.pdfValidation }),
         input_tokens: result.usage.input,
         output_tokens: result.usage.output,

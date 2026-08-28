@@ -8,6 +8,35 @@ The content rules live in `prompts/blueprint.md`; the full reasoning behind them
 is `docs/MASTER_BLUEPRINT.md`. Editing the prompt files changes the product.
 Editing `src/lib/` changes the plumbing.
 
+## Two ways to source a guide
+
+**From your own material.** Upload the book, give the section range, and nothing
+outside that slice is ever read.
+
+**From the open web.** No textbook at hand? The platform searches for
+authoritative sources, reads the pages, and builds the extract from them — then
+runs the identical pipeline. The fidelity rule does not bend for this: the
+generator still writes only from a supplied extract and still refuses to invent.
+Letting a model write a study guide from memory produces something plausible,
+unverifiable and occasionally wrong, which in study material is worse than
+useless — you memorise the error. So the sources are real, they are listed at the
+end of the document, and a validator check fails the guide if they are missing.
+
+## Domain profiles
+
+The blueprint describes the *format* and is subject-agnostic: the same structure
+works for deep learning, Roman law or pharmacology. What is specific to a field —
+the analogy registry, the established cross-links, an optional practitioner badge
+— lives in `prompts/profiles/`.
+
+```bash
+ESTUDO_PROFILE=machine-learning   # or leave empty
+```
+
+With no profile set, only the universal rules apply, and no badge is emitted.
+Adding a field is copying `prompts/profiles/machine-learning.md` and replacing
+its contents; no code changes.
+
 ## Deploy
 
 Built as a container because the render step needs a real runtime: Chromium for
@@ -110,7 +139,9 @@ shallow". Every check maps to a rule in the blueprint, not to a vibe:
 - theory boxes average 45+ words and none falls under 25 — the shallow failure
   mode is a theory box that restates the answer
 - traps are selective, not universal
-- at least three cross-links, at least one AI ENGINEER badge, formulas present
+- at least three cross-links, formulas present
+- **web-sourced guides disclose their sources** — a guide assembled from the web
+  that does not say where it came from is the thing that mode exists to prevent
 - **no language leakage** — function-word counting per box: in `en` no Portuguese
   survives, in `pt` no English outside the parenthetical allowed for technical
   terms, in `bilingual` the intuition/deep-dive/trap boxes read Portuguese while
@@ -144,7 +175,8 @@ MIT — see `LICENSE`.
 ## Layout
 
 ```
-prompts/          blueprint (content rules), analogy registry, task prompts
+prompts/          blueprint (universal format), task prompts
+prompts/profiles/ per-field analogy registries, cross-links and badges
 docs/             the master blueprint — the reasoning behind the rules
 src/app/          marketing page, login, dashboard, API routes
 src/components/   brand, nav, language toggle, the sample guide fragment

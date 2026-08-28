@@ -19,7 +19,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     stage: m.stage_detail,
     error: m.error,
     pdfReady: Boolean(m.pdf_path),
+    htmlReady: Boolean(m.html),
     pages: m.page_count,
+    sourceKind: m.source_kind,
+    sources: m.sources ? JSON.parse(m.sources) : [],
     validation: m.validation ? JSON.parse(m.validation) : null,
     usage: { input: m.input_tokens, output: m.output_tokens, cached: m.cached_tokens },
   })

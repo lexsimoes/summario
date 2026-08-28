@@ -20,7 +20,6 @@ export default async function NewDocument() {
           t={t.app.create}
           types={t.types}
           languages={t.languages}
-          families={t.families}
           cost={COST}
           balance={credits.unlimited ? Number.POSITIVE_INFINITY : credits.balance}
         />

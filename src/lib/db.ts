@@ -156,7 +156,7 @@ export function createMaterial(m: {
       `INSERT INTO materials (id, user_id, topic, description, language, document_type, family, source_file_ref, credits_cost)
        VALUES (@id, @userId, @topic, @description, @language, @documentType, @family, @sourceFileRef, @creditsCost)
        ON CONFLICT(user_id, topic, language, document_type) DO UPDATE SET
-         id = excluded.id, description = excluded.description, family = excluded.family,
+         description = excluded.description, family = excluded.family,
          source_file_ref = excluded.source_file_ref, credits_cost = excluded.credits_cost,
          status = 'pending', error = NULL, stage_detail = '', validation = NULL,
          updated_at = datetime('now')`,

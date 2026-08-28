@@ -58,8 +58,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'empty_extract' }, { status: 400 })
     }
 
+    // Scoped to the user: the id is the primary key, while the "same chapter,
+    // same language" rule is a per-user unique index. Without the prefix, two
+    // users generating the same topic collide on the primary key and the second
+    // insert throws instead of updating. It stays deterministic, so regenerating
+    // a document keeps its URL and its folder on disk.
     const slug = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const id = `${slug}-${language}-${documentType === 'exam_review' ? 'rev' : 'pg'}`
+    const id = `${user.id.slice(0, 8)}-${slug}-${language}-${documentType === 'exam_review' ? 'rev' : 'pg'}`
 
     createMaterial({
       id, userId: user.id, topic, description, language, documentType, family,

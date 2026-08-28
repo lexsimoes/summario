@@ -156,6 +156,7 @@ const pt = {
     submit: 'Entrar',
     working: 'Entrando…',
     failed: 'E-mail ou senha incorretos.',
+    throttled: 'Tentativas demais. Espere alguns minutos e tente de novo.',
     back: 'Voltar para a home',
   },
   app: {
@@ -373,6 +374,7 @@ const en: Dict = {
     submit: 'Sign in',
     working: 'Signing in…',
     failed: 'Wrong email or password.',
+    throttled: 'Too many attempts. Wait a few minutes and try again.',
     back: 'Back to the home page',
   },
   app: {

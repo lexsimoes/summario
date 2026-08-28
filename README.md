@@ -154,6 +154,20 @@ shallow". Every check maps to a rule in the blueprint, not to a vibe:
 They run at the end of every pipeline run and show up on the document page. None
 of them proves depth; a document failing several is reliably weak.
 
+## Security posture
+
+Session cookies are `httpOnly`, `sameSite=lax` and `secure` in production;
+passwords are scrypt-hashed; a missing account and a wrong password take the same
+time, so response timing does not enumerate valid emails. Redirect targets are
+validated as same-site paths. Security headers are set in `next.config.mjs`, and
+login is rate limited to eight attempts per ten minutes per address and per
+account.
+
+Not done yet, and worth knowing before you trust this with more than your own
+material: there is no Content-Security-Policy (it needs nonces for Next's inline
+scripts), the rate limiter is per-process so it counts per container, and there is
+no audit log.
+
 ## Known limits
 
 - **Jobs are in-process.** `src/lib/jobs.ts` runs generation inside the Next.js

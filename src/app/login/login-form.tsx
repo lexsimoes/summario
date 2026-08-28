@@ -2,17 +2,17 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-interface Labels { email: string; password: string; submit: string; working: string; failed: string }
+interface Labels { email: string; password: string; submit: string; working: string; failed: string; throttled: string }
 
 export function LoginForm({ t }: { t: Labels }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const [error, setError] = useState<'' | 'failed' | 'throttled'>('')
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setBusy(true)
-    setFailed(false)
+    setError('')
     const data = new FormData(e.currentTarget)
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -24,7 +24,9 @@ export function LoginForm({ t }: { t: Labels }) {
       router.refresh()
       return
     }
-    setFailed(true)
+    // 429 is a different problem from a wrong password, and telling someone to
+    // keep retrying when they are rate limited is the worst possible advice.
+    setError(res.status === 429 ? 'throttled' : 'failed')
     setBusy(false)
   }
 
@@ -38,7 +40,7 @@ export function LoginForm({ t }: { t: Labels }) {
         <label className="label" htmlFor="password">{t.password}</label>
         <input className="input" id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
-      {failed && <p className="error-note" style={{ marginTop: 16 }}>{t.failed}</p>}
+      {error && <p className="error-note" style={{ marginTop: 16 }}>{error === 'throttled' ? t.throttled : t.failed}</p>}
       <button className="btn btn-primary btn-block" style={{ marginTop: 22 }} type="submit" disabled={busy}>
         {busy ? t.working : t.submit}
       </button>

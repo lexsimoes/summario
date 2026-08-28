@@ -6,6 +6,22 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### Security headers, and a limit on login attempts
+Next ships no security headers by default, and a public site without them relies
+on the browser guessing right. Added HSTS, `nosniff`, `X-Frame-Options: DENY`,
+a referrer policy, a permissions policy and `Cross-Origin-Opener-Policy`, and
+turned off the `X-Powered-By` banner.
+
+Deliberately absent: a Content-Security-Policy. A useful one needs per-request
+nonces for Next's inline hydration scripts, and a CSP that is wrong is worse than
+none — it either breaks the app or lulls you into thinking you have one.
+
+Login had no rate limit, so a public site accepted unlimited password guesses.
+Eight attempts per ten minutes, keyed on both the client address and the account,
+so neither a single source nor a distributed attempt on one account gets a free
+run. A successful login clears the counter. The limiter is in memory, which is
+honest for a single container and is the same boundary the job runner has.
+
 ### Documentation caught up with the code
 `docs/MASTER_BLUEPRINT.md` still described the field selector, the machine-learning
 analogy registry and a single sourcing mode. It is now v1.1, with changes marked

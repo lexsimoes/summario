@@ -7,10 +7,13 @@ It serves two roles at once:
 2. **System prompt base** — the content rules (Parts 2–5) are the generation prompt for the app itself.
 
 Owner: Lex (Alexandre Simoes) · Target role: AI Engineer
-Status: **v1.1** — v1.0 was consolidated from ~10 study documents produced and refined
+Status: **v1.2** — v1.0 was consolidated from ~10 study documents produced and refined
 iteratively. v1.1 records what changed once the app was built and deployed: the document
 family selector is gone, machine learning was lifted out of the blueprint into a domain
-profile, and a second sourcing mode was added. Changes are marked **[v1.1]** in place.
+profile, and a second sourcing mode was added. v1.2 records the retrieval layer being
+built — the study set (quiz, flashcards, Anki export, anchor-project briefs) — and the
+job queue becoming durable. Changes are marked **[v1.1]** / **[v1.2]** in place rather
+than rewritten, so the earlier reasoning stays legible.
 
 > **Implementation note.** `prompts/blueprint.md` in this repo is the generation-facing
 > subset of this document — Parts 1–5 rewritten as instructions to the model, plus the
@@ -542,13 +545,34 @@ Material
   source_file_ref, status (pending|researching|extracting|planning|
                            generating|rendering|validating|done|failed),
   html, pdf_path, page_count, credits_cost, validation,
-  input_tokens, output_tokens, cached_tokens, created_at
+  input_tokens, output_tokens, cached_tokens, created_at,
+  derivatives_status (none|generating|ready|failed), derivatives_error -- [v1.2]
 
 Flashcard
-  id, material_id, front, back, tags
+  id, material_id, front, back, tags   -- [v1.2] `tags` carries the concept tag
 
 QuizQuestion
-  id, material_id, question, answer, explanation, trap, is_multi_select
+  id, material_id, question, answer, explanation, trap, is_multi_select,
+  concept                              -- [v1.2] same tag vocabulary as Flashcard
+
+-- [v1.2] --------------------------------------------------------------------
+Project                 -- the anchor-project briefs, Part 9 phase 5
+  id, material_id, title, brief, concepts
+
+QuizAttempt             -- one row per self-graded answer; most-recent-per-question
+  id, material_id, user_id, question_id, correct, created_at
+                        -- decides which concepts are still weak
+
+Job                     -- the durable work queue (see 8.3)
+  id, kind (generate|derive), material_id, user_id, payload,
+  status (queued|running|done|failed), attempts, error,
+  created_at, started_at, finished_at
+
+RateLimit               -- fixed window, in the DB so it survives a restart
+  key, count, reset_at
+
+AuditLog                -- append-only: sign-ins, generations, credit movement
+  id, user_id, actor_ip, event, detail, created_at
 ```
 
 **Key:** a material is identified by (topic + language), not topic alone — the same chapter
@@ -560,12 +584,36 @@ Run generation as a background job with status polling. A full Pocket Guide take
 and will blow past any HTTP request timeout. The UI should show staged progress:
 "extracting → generating guide → generating cards → rendering PDF".
 
+**[v1.2]** "Background job" was first read as *fire-and-forget in the server process*, and that
+was wrong in a specific way: this app redeploys on every push to `main`, so a restart killed the
+worker while the row still said `generating`. The queue is a `jobs` table now, claimed one at a
+time by an in-process worker; a restart re-queues what was running instead of losing it. Still
+one worker in one process — what changed is that the queue outlives the process.
+
 ### 8.4 Build order (do not build everything at once)
 
-- **Phase 1 — Core:** upload PDF → generate Pocket Guide → render PDF. This alone is ~80% of the value.
-- **Phase 2:** flashcards + Anki export (TSV/CSV, `front;back`, semicolon-separated)
-- **Phase 3:** interactive quiz inside the app (active recall built in)
-- **Phase 4:** library — history, search, organization by course
+- **Phase 1 — Core:** upload PDF → generate Pocket Guide → render PDF. This alone is ~80% of the value. **[built]**
+- **Phase 2:** flashcards + Anki export (TSV/CSV, `front;back`, semicolon-separated) **[built — v1.2]**
+- **Phase 3:** interactive quiz inside the app (active recall built in) **[built — v1.2]**
+- **Phase 4:** library — history, search, organization by course *(history exists; search and course grouping do not)*
+
+**[v1.2]** Phases 2 and 3 shipped together as one **study set**, generated on demand from a
+finished guide rather than automatically: most guides are read before they are drilled, and
+paying for cards nobody asked for is waste. It costs no credit — the derivative tier is cheap
+enough that metering it would cost more in hesitation than in tokens.
+
+Two corrections to the plan above, both learned in the building:
+
+- **TSV, not `front;back`.** Guide prose is full of semicolons. Anki also treats a bare newline
+  as a record break, so every exported field is flattened to one line.
+- **The quiz and the flashcards are one mechanism, not two features.** Cards and questions share
+  a concept-tag vocabulary; a missed question marks its concept weak and the deck reorders to
+  put those cards first. Phase 3's "weighted toward what was weak in phase 2" only works if the
+  two were built to name concepts the same way.
+
+**[v1.2]** Also built here: an **anchor-project brief** (Part 9 phase 5) — two or three applied
+projects drawn from the guide's own concepts, generated in the same call. It is the per-guide
+version; tracking concepts *across* guides to time the project properly is not built.
 
 ### 8.5 Regenerate vs. translate
 

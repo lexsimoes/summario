@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { requireUserApi } from '@/lib/api-auth'
+import { recordAudit } from '@/lib/audit'
+import { clientIp } from '@/lib/rate-limit'
 import { createMaterial, listMaterials } from '@/lib/db'
 import { canAfford, chargeCredits, COST } from '@/lib/credits'
 import { config } from '@/lib/config'
 import { cleanExtract, pdfToTextCached, sectionsFromScope, sliceSections } from '@/lib/extract'
-import { startJob } from '@/lib/jobs'
+import { enqueueJob } from '@/lib/jobs'
 import { themeFor } from '@/lib/design'
 import type { DocumentType, LanguageMode, SourceKind } from '@/lib/types'
 
@@ -88,8 +90,17 @@ export async function POST(req: Request) {
       sourceKind, sourceFileRef: pdfPath, creditsCost: cost,
     })
     chargeCredits(user, id, cost)
-    startJob(id, user.id, {
-      topic, description, language, documentType, theme, sourceKind, sourceText,
+    enqueueJob({
+      kind: 'generate',
+      materialId: id,
+      userId: user.id,
+      payload: { topic, description, language, documentType, theme, sourceKind, sourceText },
+    })
+    recordAudit({
+      event: 'generate',
+      userId: user.id,
+      ip: clientIp(req),
+      detail: `${id} · ${sourceKind} · ${cost} credit(s)`,
     })
 
     return NextResponse.json({ id, sectionMatched, sourceKind, cost })

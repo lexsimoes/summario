@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </form>
           </div>
         </div>
-        <div className="wrap"><AppNav t={t} /></div>
+        <div className="wrap"><AppNav t={t} isOwner={user.plan === 'owner'} /></div>
       </header>
 
       <main className="wrap" style={{ flex: 1, paddingBlock: 'clamp(28px, 4vw, 52px) 80px' }}>

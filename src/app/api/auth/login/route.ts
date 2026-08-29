@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { recordAudit } from '@/lib/audit'
 import { authenticate, startSession } from '@/lib/auth'
 import { clearRateLimit, clientIp, rateLimit } from '@/lib/rate-limit'
 
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
   const blocked = limits.find((l) => !l.allowed)
 
   if (blocked) {
+    recordAudit({ event: 'login_throttled', ip, detail: account })
     return NextResponse.json(
       { error: 'too_many_attempts', retryAfterSeconds: blocked.retryAfterSeconds },
       { status: 429, headers: { 'retry-after': String(blocked.retryAfterSeconds) } },
@@ -28,11 +30,15 @@ export async function POST(req: Request) {
   }
 
   const user = await authenticate(account, password)
-  if (!user) return NextResponse.json({ error: 'invalid' }, { status: 401 })
+  if (!user) {
+    recordAudit({ event: 'login_failed', ip, detail: account })
+    return NextResponse.json({ error: 'invalid' }, { status: 401 })
+  }
 
   clearRateLimit(`login:ip:${ip}`)
   clearRateLimit(`login:account:${account}`)
 
   await startSession(user.id)
+  recordAudit({ event: 'login', userId: user.id, ip, detail: account })
   return NextResponse.json({ ok: true })
 }

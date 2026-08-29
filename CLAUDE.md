@@ -21,10 +21,20 @@ version of the same thing.
   format rules; field-specific content (analogy registry, badges) lives in
   `prompts/profiles/<name>.md` and loads only when `ESTUDO_PROFILE` is set.
 - **Credits are charged at job start and refunded on failure.** The ledger is
-  append-only; balance is `SUM(delta)`.
-- **Jobs run in-process.** Right for one user, and the seam to replace with a
-  real queue later. A restart loses the worker, which is why
-  `recoverStrandedJobs()` runs from `src/instrumentation.ts` on every boot.
+  append-only; balance is `SUM(delta)`. The study set is the exception: it is
+  derived from a guide already paid for and costs nothing.
+- **Jobs run in-process, off a durable queue.** One worker, one job at a time,
+  claimed from the `jobs` table. Still the seam to replace with a real queue
+  later. A restart no longer loses work: `resumeJobs()` runs from
+  `src/instrumentation.ts` on every boot and re-queues what was running, failing
+  and refunding only what has spent its retry budget.
+- **Derivatives read the guide's HTML, never the source.** ~70% fewer tokens, and
+  the cards stay consistent with the document the reader has.
+- **The build is Turbopack.** Next 15.5's webpack path cannot bundle middleware
+  on Node 22 at all (`WebpackError is not a constructor`, from inside its own
+  minifier), and 15.5.24 is the end of that line. Do not "simplify" `npm run
+  build` back to plain `next build` — it will fail the moment `src/middleware.ts`
+  exists, which is where the CSP lives.
 
 ## Verification
 Typecheck and build are **not** verification — three shipped bugs passed both.

@@ -2,10 +2,9 @@
  * Security headers. Next ships none of these by default, and a public site
  * without them is relying on the browser guessing right.
  *
- * Deliberately absent: Content-Security-Policy. A useful one needs per-request
- * nonces for Next's inline hydration scripts, and a CSP that is wrong is worse
- * than none — it either breaks the app or lulls you into thinking you have one.
- * It is worth doing properly, and it is not a one-line change.
+ * The Content-Security-Policy is NOT here: it carries a per-request nonce for
+ * Next's inline hydration scripts, which a static header cannot do. It lives in
+ * `src/middleware.ts`.
  */
 const securityHeaders = [
   // Once a browser has seen this it refuses plain HTTP for a year. includeSubDomains

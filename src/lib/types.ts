@@ -9,6 +9,9 @@ export type Status =
   | 'pending' | 'researching' | 'extracting' | 'planning' | 'generating'
   | 'rendering' | 'validating' | 'done' | 'failed'
 
+/** Background work the in-process worker picks off the `jobs` table. */
+export type JobKind = 'generate' | 'derive'
+
 export interface Source {
   title: string
   url: string
@@ -58,4 +61,34 @@ export interface ValidationResult {
   checks: { name: string; ok: boolean; detail: string }[]
   /** Set by validatePdf — the rendered page count, surfaced in the dashboard. */
   pages?: number
+}
+
+/** Where a material's derived study set stands. */
+export type DerivativesStatus = 'none' | 'generating' | 'ready' | 'failed'
+
+/* The model returns these; the DB rows add ids and a material_id. */
+export interface FlashcardDraft {
+  front: string
+  back: string
+  /** 1–3 word tag; shared with the matching quiz questions so misses can weight the deck. */
+  concept: string
+}
+export interface QuizDraft {
+  question: string
+  answer: string
+  explanation: string
+  /** Named wrong answer + why, or '' when there is no classic trap. */
+  trap?: string
+  concept: string
+  is_multi_select?: boolean
+}
+export interface ProjectDraft {
+  title: string
+  brief: string
+  concepts: string[]
+}
+export interface StudySet {
+  flashcards: FlashcardDraft[]
+  quiz: QuizDraft[]
+  projects: ProjectDraft[]
 }

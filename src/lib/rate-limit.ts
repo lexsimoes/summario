@@ -1,19 +1,17 @@
+import { getDb } from './db'
+
 /**
- * A small fixed-window limiter, in memory.
+ * A small fixed-window limiter, backed by SQLite.
  *
- * In process on purpose: the app runs as a single container, so a shared store
- * would be a dependency bought for nothing. It is also the honest limit of this
- * design — the day summario runs on two containers, this counts per container
- * and has to move to the database or a cache. That day is the same day the job
- * runner has to become a queue.
+ * It used to live in a Map in the server process, which was wrong in a way that
+ * mattered: this app redeploys on every push to `main`, and an in-memory counter
+ * hands whoever is guessing a fresh budget on every restart. The table is on the
+ * same data volume the rest of the state uses, so the count survives a restart —
+ * and two containers sharing that volume now count together rather than
+ * separately.
+ *
+ * Still synchronous: better-sqlite3 is, so callers need no change.
  */
-interface Window {
-  count: number
-  resetAt: number
-}
-
-const windows = new Map<string, Window>()
-
 export interface RateLimitResult {
   allowed: boolean
   remaining: number
@@ -21,35 +19,42 @@ export interface RateLimitResult {
 }
 
 export function rateLimit(key: string, max: number, windowMs: number): RateLimitResult {
+  const db = getDb()
   const now = Date.now()
-  const existing = windows.get(key)
 
-  if (!existing || existing.resetAt <= now) {
-    windows.set(key, { count: 1, resetAt: now + windowMs })
-    sweep(now)
-    return { allowed: true, remaining: max - 1, retryAfterSeconds: 0 }
-  }
+  return db.transaction(() => {
+    const row = db.prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?').get(key) as
+      | { count: number; reset_at: number }
+      | undefined
 
-  existing.count += 1
-  const allowed = existing.count <= max
-  return {
-    allowed,
-    remaining: Math.max(0, max - existing.count),
-    retryAfterSeconds: allowed ? 0 : Math.ceil((existing.resetAt - now) / 1000),
-  }
+    if (!row || row.reset_at <= now) {
+      db.prepare(
+        `INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, ?)
+         ON CONFLICT(key) DO UPDATE SET count = 1, reset_at = excluded.reset_at`,
+      ).run(key, now + windowMs)
+      sweep(now)
+      return { allowed: true, remaining: max - 1, retryAfterSeconds: 0 }
+    }
+
+    const count = row.count + 1
+    db.prepare('UPDATE rate_limits SET count = ? WHERE key = ?').run(count, key)
+    const allowed = count <= max
+    return {
+      allowed,
+      remaining: Math.max(0, max - count),
+      retryAfterSeconds: allowed ? 0 : Math.ceil((row.reset_at - now) / 1000),
+    }
+  })()
 }
 
 /** Clears the key after a success, so a legitimate login does not stay penalised. */
 export function clearRateLimit(key: string) {
-  windows.delete(key)
+  getDb().prepare('DELETE FROM rate_limits WHERE key = ?').run(key)
 }
 
-/** Expired windows would otherwise accumulate for the life of the process. */
+/** Expired rows would otherwise accumulate for the life of the database. */
 function sweep(now: number) {
-  if (windows.size < 500) return
-  for (const [key, window] of windows) {
-    if (window.resetAt <= now) windows.delete(key)
-  }
+  getDb().prepare('DELETE FROM rate_limits WHERE reset_at <= ?').run(now)
 }
 
 /**

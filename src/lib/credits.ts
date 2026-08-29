@@ -1,3 +1,4 @@
+import { recordAudit } from './audit'
 import { addLedgerEntry, getMaterial, ledgerTotals, type UserRow } from './db'
 import type { DocumentType } from './types'
 
@@ -48,8 +49,10 @@ export function refundCredits(userId: string, materialId: string) {
     reason: 'refund:failed',
     materialId,
   })
+  recordAudit({ event: 'refund', userId, detail: `${materialId} (+${material.credits_cost})` })
 }
 
 export function grantCredits(userId: string, amount: number, reason: string) {
   addLedgerEntry({ userId, delta: amount, reason })
+  recordAudit({ event: 'grant', userId, detail: `${reason} (+${amount})` })
 }

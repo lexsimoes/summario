@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth'
 import { getMaterial } from '@/lib/db'
 import { tr } from '@/lib/i18n'
 import { DocumentStatus } from './document-status'
+import { StudySet } from './study-set'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,24 +26,30 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
         {m.description ? ` · ${m.description}` : ''}
       </p>
 
-      <DocumentStatus
-        id={id}
-        initialStatus={m.status}
-        t={{
-          open: t.app.material.open,
-          openHtml: t.app.material.openHtml,
-          sources: t.app.material.sources,
-          sourcesLede: t.app.material.sourcesLede,
-          checks: t.app.material.checks,
-          checksLede: t.app.material.checksLede,
-          usage: t.app.material.usage,
-          tokensIn: t.app.material.tokensIn,
-          tokensOut: t.app.material.tokensOut,
-          tokensCached: t.app.material.tokensCached,
-          stages: t.app.material.stages,
-          pages: t.app.overview.pages,
-        }}
-      />
+      <div className="stack-l">
+        <DocumentStatus
+          id={id}
+          initialStatus={m.status}
+          t={{
+            open: t.app.material.open,
+            openHtml: t.app.material.openHtml,
+            sources: t.app.material.sources,
+            sourcesLede: t.app.material.sourcesLede,
+            checks: t.app.material.checks,
+            checksLede: t.app.material.checksLede,
+            usage: t.app.material.usage,
+            tokensIn: t.app.material.tokensIn,
+            tokensOut: t.app.material.tokensOut,
+            tokensCached: t.app.material.tokensCached,
+            stages: t.app.material.stages,
+            pages: t.app.overview.pages,
+          }}
+        />
+
+        {m.status === 'done' && (
+          <StudySet id={id} guideHref={`/api/materials/${id}/html`} t={t.app.material.study} />
+        )}
+      </div>
     </div>
   )
 }

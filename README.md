@@ -79,7 +79,9 @@ password. `pdftotext` must be on PATH: `brew install poppler` on macOS,
   guesses wrong on day one.
 - `/login` — invite-only. There is no sign-up flow: accounts are created with
   `npm run seed`.
-- `/app` — overview, `/app/new`, `/app/history`, `/app/credits`.
+- `/app` — overview, `/app/new`, `/app/history`, `/app/credits`, and
+  `/app/audit` for the owner account only. A finished document at
+  `/app/documents/<id>` carries its study set: quiz, flashcards, project briefs.
 
 The site inherits the generated document's visual language on purpose: same
 serif, same purple, same box colors. The homepage renders real guide fragments
@@ -106,6 +108,7 @@ would.
 | Generate | one call per part, source block prompt-cached | guide model |
 | Render | Chromium prints the HTML, KaTeX served from disk | none — pure code |
 | Validate | content-quality + render-integrity checks | none — pure code |
+| Derive (on demand) | quiz, flashcards and project briefs from the guide's HTML | derivative model |
 
 The plan step exists so a 20-page document does not drift, and so a single weak
 part can be regenerated without rebuilding the whole thing. The source extract is
@@ -131,6 +134,27 @@ Check the render path without spending a token:
 ```bash
 npm run render -- fixtures/sample.html
 ```
+
+## The study set
+
+The guide is the reference layer. Retrieval is a different job, and a finished
+guide grows the rest of it on demand — a button on the document page, no credit
+charged, regenerate whenever:
+
+- **A retrieval quiz.** One question at a time, answer from memory, reveal, mark
+  it hit or missed. The explanation and the classic trap come with the answer.
+- **Flashcards.** Click to flip, and **exported to Anki** as TSV — spacing is
+  Anki's job, and its SM-2 beats anything hand-rolled here.
+- **Project briefs.** Two or three applied projects built from that guide's own
+  concepts, for the point where summarising stops paying.
+
+The quiz and the deck are one mechanism. Every card and question carries a
+concept tag from a shared vocabulary: miss a question and its concept is marked
+weak, and the deck reorders to put those cards first.
+
+Derivatives read the **guide's HTML**, never the original PDF — roughly 70% fewer
+tokens, and it keeps the cards consistent with the document the reader actually
+has. One call on `ESTUDO_MODEL_DERIVATIVE`.
 
 ## The quality checks
 
@@ -162,20 +186,33 @@ of them proves depth; a document failing several is reliably weak.
 Session cookies are `httpOnly`, `sameSite=lax` and `secure` in production;
 passwords are scrypt-hashed; a missing account and a wrong password take the same
 time, so response timing does not enumerate valid emails. Redirect targets are
-validated as same-site paths. Security headers are set in `next.config.mjs`, and
-login is rate limited to eight attempts per ten minutes per address and per
-account.
+validated as same-site paths. Static security headers are set in
+`next.config.mjs`; the **Content-Security-Policy** is in `src/middleware.ts`,
+where a fresh nonce can be minted per request for Next's inline hydration scripts
+(`strict-dynamic` covers the chunks it loads).
 
-Not done yet, and worth knowing before you trust this with more than your own
-material: there is no Content-Security-Policy (it needs nonces for Next's inline
-scripts), the rate limiter is per-process so it counts per container, and there is
-no audit log.
+Login is rate limited to eight attempts per ten minutes, per address and per
+account. The counter lives in **SQLite**, not in process memory — this app
+restarts on every push, and an in-memory limiter would hand out a fresh budget
+each time.
+
+An **audit log** records sign-ins, failed and throttled attempts, sign-outs,
+generations, study sets, refunds and grants, append-only, with the client
+address. `/app/audit` shows the last 200, owner-only.
+
+Not done yet, and worth knowing: `style-src` still allows `'unsafe-inline'`,
+because the app styles through inline `style` attributes and nonces do not apply
+to those — tightening it means removing them first. The generated-document routes
+are exempt from the CSP by design (that HTML has its own inline KaTeX boot
+script).
 
 ## Known limits
 
-- **Jobs are in-process.** `src/lib/jobs.ts` runs generation inside the Next.js
-  process and keeps status in SQLite. Right for a single-user instance; replace
-  with a real queue before this serves more than one person.
+- **Jobs are in-process, but the queue is durable.** `src/lib/jobs.ts` runs
+  generation inside the Next.js process, one job at a time, off a `jobs` table.
+  A restart re-queues whatever was running rather than losing it. Still one
+  worker in one process: replace it with a real queue before this serves more
+  than one person.
 - **Playwright needs a real runtime.** Vercel's serverless functions are a bad
   fit for the render step — Railway, Fly, or any container is safer.
 - **Scanned PDFs produce an empty extract.** OCR them first; the API refuses
@@ -204,13 +241,14 @@ MIT — see `LICENSE`.
 ## Layout
 
 ```
-prompts/          blueprint (universal format), task prompts
+prompts/          blueprint (universal format), task prompts, study-set prompt
 prompts/profiles/ per-field analogy registries, cross-links and badges
 docs/             the master blueprint — the reasoning behind the rules
-docs/             the master blueprint — the reasoning behind the rules
 src/app/          marketing page, login, dashboard, API routes
+src/middleware.ts the Content-Security-Policy and its per-request nonce
 src/components/   brand, nav, language toggle, the sample guide fragment
-src/lib/          extract · generate · render · validate · db · auth · credits
+src/lib/          extract · generate · derive · render · validate · db · auth
+                  · credits · jobs · audit · rate-limit
 scripts/          seed, CLI runner, katex setup, model listing, render probe
 fixtures/         sample.html — exercises the design system with no API call
 data/             gitignored: uploads, extract cache, generated materials, sqlite

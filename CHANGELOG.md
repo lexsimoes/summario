@@ -6,6 +6,79 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### The study loop is finished: quiz, flashcards, Anki export, project briefs
+The homepage has described a five-step method since the first deploy — read the
+guide, close it and answer, turn gaps into cards, let Anki space them, build
+something — and only the first step existed. Four of the five do now.
+
+A finished guide grows a **study set**: a retrieval quiz you self-grade, flashcards
+that flip, an Anki export, and two or three applied-project briefs. It is
+generated on demand from the guide's own HTML — never the original PDF, which is
+the ~70% token saving the blueprint's stage 3 calls for — on the derivative tier,
+and it costs **no credit**. Regenerating it replaces the old set outright.
+
+The quiz and the cards are one mechanism, not two features. Every card and every
+question carries a concept tag from a shared vocabulary, so a question you miss
+marks its concept weak, and the deck reorders to put that concept first. That is
+the whole point of the retrieval layer: the cards you see most are the ones you
+just proved you could not recall.
+
+Spacing is still Anki's job. The export is TSV rather than the semicolon format
+the blueprint first suggested — guide prose is full of semicolons — and every
+field is flattened to one line, because Anki reads a bare newline as a record
+break.
+
+### Jobs survive a restart instead of being refunded away
+The previous fix made a stranded job *fail cleanly and refund*. That was the
+right floor, not the right behaviour: a deploy in the middle of a generation
+still threw the work away, and this app redeploys on every push to `main`.
+
+Jobs are now rows in the database, claimed by an in-process worker one at a time.
+A restart re-queues whatever was running instead of killing it, and the credit
+stays spent because the job is about to actually run. Only a job that has already
+burned its restart budget is failed and refunded — the redeploy-loop case, where
+giving up is correct. The claim is a single transaction, so two containers on one
+volume cannot take the same job.
+
+Still an in-process worker, which is still honest for one user. What changed is
+that the queue outlives the process, which is the part that was costing work.
+
+### A Content-Security-Policy, with real nonces
+Left out until it could be done properly, on the grounds that a wrong CSP is
+worse than none. Now in `src/middleware.ts`, which is the only place a per-request
+nonce can be minted for Next's inline hydration scripts. `strict-dynamic` lets the
+scripts Next loads from the nonced bootstrap inherit trust, so chunk filenames
+never have to be enumerated.
+
+`style-src` still carries `'unsafe-inline'`, and that is not an oversight to be
+quietly forgotten: the app styles through inline `style` attributes throughout,
+and nonces do not apply to style attributes at all. Tightening it means removing
+those first.
+
+The generated-document routes are exempt. That HTML is a Chromium-rendered
+artifact with its own inline KaTeX boot script; applying the app's policy to it
+would break the math in a page the reader opened in order to print.
+
+**The build moved to Turbopack** as part of this. Next 15.5's webpack path fails
+to bundle *any* middleware on Node 22 — `WebpackError is not a constructor`, from
+inside its own minifier, for a middleware as small as two lines. 15.5.24 is the
+end of that release line, so there is no patch to wait for. Turbopack builds the
+same app correctly and is the supported path in this version.
+
+### The rate limiter moved into the database
+It was a Map in the server process, which was wrong in a way that mattered here:
+every push to `main` restarts the container, and an in-memory counter hands
+whoever is guessing a fresh budget on each restart. It is a table on the data
+volume now, so the count survives a restart — and two containers sharing that
+volume count together rather than separately.
+
+### An audit log
+The security posture had a hole shaped like "something happened and there is no
+way to find out what". Sign-ins, failed and throttled attempts, sign-outs,
+generations, study sets, refunds and grants are now recorded append-only, with
+the client address. `/app/audit` shows the last 200, owner-only — a member has no
+business reading other accounts' sign-in history.
+
 ### A job can no longer hang forever, and a restart no longer eats a credit
 Two halves of the same failure. A generation sat on "writing" for several minutes
 and never moved, and nothing in the system could end it: the API calls had no

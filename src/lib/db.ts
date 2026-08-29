@@ -2,7 +2,9 @@ import Database from 'better-sqlite3'
 import fs from 'node:fs'
 import path from 'node:path'
 import { config } from './config'
-import type { DocumentType, LanguageMode, SourceKind, Status, Theme } from './types'
+import type {
+  DerivativesStatus, DocumentType, JobKind, LanguageMode, SourceKind, Status, StudySet, Theme,
+} from './types'
 
 let db: Database.Database | null = null
 
@@ -39,6 +41,23 @@ function migrate(db: Database.Database) {
   }
   if (!columns.has('sources')) {
     db.exec('ALTER TABLE materials ADD COLUMN sources TEXT')
+  }
+
+  // The derived study set (flashcards + quiz + project briefs) is generated on
+  // demand from a finished guide, so a material tracks its own derivative state.
+  if (!columns.has('derivatives_status')) {
+    db.exec("ALTER TABLE materials ADD COLUMN derivatives_status TEXT NOT NULL DEFAULT 'none'")
+  }
+  if (!columns.has('derivatives_error')) {
+    db.exec('ALTER TABLE materials ADD COLUMN derivatives_error TEXT')
+  }
+
+  const quizColumns = new Set(
+    (db.prepare('PRAGMA table_info(quiz_questions)').all() as { name: string }[]).map((c) => c.name),
+  )
+  // Concept tag, shared with the flashcards, so a missed question can weight the deck.
+  if (!quizColumns.has('concept')) {
+    db.exec("ALTER TABLE quiz_questions ADD COLUMN concept TEXT DEFAULT ''")
   }
 }
 
@@ -108,8 +127,68 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   material_id TEXT NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
   question TEXT NOT NULL, answer TEXT NOT NULL,
   explanation TEXT DEFAULT '', trap TEXT DEFAULT '',
-  is_multi_select INTEGER DEFAULT 0
+  is_multi_select INTEGER DEFAULT 0,
+  concept TEXT DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS projects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  material_id TEXT NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+  title TEXT NOT NULL, brief TEXT NOT NULL, concepts TEXT NOT NULL DEFAULT ''
+);
+
+-- One row per self-graded quiz answer. "Most recent per question" decides which
+-- concepts are still weak, which orders the flashcard deck and fills the quiz
+-- end screen.
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  material_id TEXT NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  question_id INTEGER NOT NULL,
+  correct INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS quiz_attempts_by_material ON quiz_attempts(material_id, user_id, id DESC);
+
+-- Durable work queue. Jobs used to live in the server process's memory, so a
+-- restart — a deploy, a crash, an OOM — lost the worker while the material row
+-- still said "generating". A row here survives the restart; requeueInterruptedJobs
+-- puts anything left mid-flight back on the queue instead of stranding it.
+CREATE TABLE IF NOT EXISTS jobs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  material_id TEXT NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  payload TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'queued',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  error TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  started_at TEXT,
+  finished_at TEXT
+);
+CREATE INDEX IF NOT EXISTS jobs_by_status ON jobs(status, id);
+
+-- Fixed-window rate limiting. In the database rather than in a Map so the count
+-- survives a restart: an in-memory limiter hands an attacker a fresh budget every
+-- time the container recycles, and a redeploy is a routine event here.
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT PRIMARY KEY,
+  count INTEGER NOT NULL,
+  reset_at INTEGER NOT NULL
+);
+
+-- Append-only record of the things worth being able to reconstruct after the
+-- fact: who signed in, what was generated, where credits moved.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT,
+  actor_ip TEXT,
+  event TEXT NOT NULL,
+  detail TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS audit_by_time ON audit_log(id DESC);
 `
 
 export interface UserRow {
@@ -143,6 +222,8 @@ export interface MaterialRow {
   input_tokens: number
   output_tokens: number
   cached_tokens: number
+  derivatives_status: DerivativesStatus
+  derivatives_error: string | null
   created_at: string
   updated_at: string
 }
@@ -260,4 +341,182 @@ export function ledgerTotals(userId: string) {
     )
     .get(userId) as { balance: number; spent: number; granted: number }
   return row
+}
+
+/* ------------------------------------------------------------------- jobs */
+
+/**
+ * How many times a job may be started before a restart that interrupts it again
+ * gives up and fails it for good. A job that throws inside its handler is not
+ * retried at all — retries here exist only for "the process died mid-run".
+ */
+export const MAX_JOB_ATTEMPTS = 2
+
+export interface JobRow {
+  id: number
+  kind: JobKind
+  material_id: string
+  user_id: string
+  payload: string
+  status: 'queued' | 'running' | 'done' | 'failed'
+  attempts: number
+  error: string | null
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export function enqueueJob(j: { kind: JobKind; materialId: string; userId: string; payload?: unknown }): number {
+  const info = getDb()
+    .prepare('INSERT INTO jobs (kind, material_id, user_id, payload) VALUES (?, ?, ?, ?)')
+    .run(j.kind, j.materialId, j.userId, JSON.stringify(j.payload ?? {}))
+  return Number(info.lastInsertRowid)
+}
+
+/**
+ * Atomically take the oldest queued job. The SELECT and the UPDATE are one
+ * transaction so two workers — two containers on the same volume — cannot claim
+ * the same row.
+ */
+export function claimNextJob(): JobRow | undefined {
+  const db = getDb()
+  return db.transaction(() => {
+    const row = db
+      .prepare("SELECT * FROM jobs WHERE status = 'queued' ORDER BY id LIMIT 1")
+      .get() as JobRow | undefined
+    if (!row) return undefined
+    db.prepare("UPDATE jobs SET status = 'running', attempts = attempts + 1, started_at = datetime('now') WHERE id = ?").run(row.id)
+    return { ...row, status: 'running' as const, attempts: row.attempts + 1 }
+  })()
+}
+
+export function finishJob(id: number, ok: boolean, error?: string) {
+  getDb()
+    .prepare("UPDATE jobs SET status = ?, error = ?, finished_at = datetime('now') WHERE id = ?")
+    .run(ok ? 'done' : 'failed', error ?? null, id)
+}
+
+/**
+ * Called once on boot. Anything still `running` was interrupted by the restart:
+ * put it back on the queue if it has retries left, otherwise fail it. Returns
+ * both sets so the caller can fix up the owning material (resume vs. refund).
+ */
+export function requeueInterruptedJobs(): { requeued: JobRow[]; abandoned: JobRow[] } {
+  const db = getDb()
+  const running = db.prepare("SELECT * FROM jobs WHERE status = 'running'").all() as JobRow[]
+  const requeued: JobRow[] = []
+  const abandoned: JobRow[] = []
+  db.transaction(() => {
+    for (const job of running) {
+      if (job.attempts < MAX_JOB_ATTEMPTS) {
+        db.prepare("UPDATE jobs SET status = 'queued', started_at = NULL WHERE id = ?").run(job.id)
+        requeued.push(job)
+      } else {
+        db.prepare("UPDATE jobs SET status = 'failed', error = ?, finished_at = datetime('now') WHERE id = ?")
+          .run('Interrupted by a server restart after the retry budget was spent.', job.id)
+        abandoned.push(job)
+      }
+    }
+  })()
+  return { requeued, abandoned }
+}
+
+export const activeJobForMaterial = (materialId: string) =>
+  getDb()
+    .prepare("SELECT * FROM jobs WHERE material_id = ? AND status IN ('queued','running') ORDER BY id DESC LIMIT 1")
+    .get(materialId) as JobRow | undefined
+
+/* ------------------------------------------------------------- study set */
+
+export interface FlashcardRow {
+  id: number
+  material_id: string
+  front: string
+  back: string
+  /** The concept tag lives in `tags` (the column predates this use). */
+  tags: string
+}
+export interface QuizQuestionRow {
+  id: number
+  material_id: string
+  question: string
+  answer: string
+  explanation: string
+  trap: string
+  is_multi_select: number
+  concept: string
+}
+export interface ProjectRow {
+  id: number
+  material_id: string
+  title: string
+  brief: string
+  /** Comma-joined concept tags. */
+  concepts: string
+}
+
+/**
+ * Swap in a freshly generated study set for a material. One transaction: drop
+ * the old cards, questions, project briefs and attempt history, then insert the
+ * new set — so a regenerate leaves nothing stale behind.
+ */
+export function replaceStudySet(materialId: string, set: StudySet) {
+  const db = getDb()
+  db.transaction(() => {
+    for (const table of ['flashcards', 'quiz_questions', 'projects', 'quiz_attempts']) {
+      db.prepare(`DELETE FROM ${table} WHERE material_id = ?`).run(materialId)
+    }
+    const card = db.prepare('INSERT INTO flashcards (material_id, front, back, tags) VALUES (?, ?, ?, ?)')
+    for (const c of set.flashcards) card.run(materialId, c.front, c.back, c.concept ?? '')
+
+    const q = db.prepare(
+      `INSERT INTO quiz_questions (material_id, question, answer, explanation, trap, is_multi_select, concept)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    for (const x of set.quiz) {
+      q.run(materialId, x.question, x.answer, x.explanation ?? '', x.trap ?? '', x.is_multi_select ? 1 : 0, x.concept ?? '')
+    }
+
+    const p = db.prepare('INSERT INTO projects (material_id, title, brief, concepts) VALUES (?, ?, ?, ?)')
+    for (const x of set.projects) p.run(materialId, x.title, x.brief, (x.concepts ?? []).join(', '))
+  })()
+}
+
+export const getFlashcards = (materialId: string) =>
+  getDb().prepare('SELECT * FROM flashcards WHERE material_id = ? ORDER BY id').all(materialId) as FlashcardRow[]
+
+export const getQuizQuestions = (materialId: string) =>
+  getDb().prepare('SELECT * FROM quiz_questions WHERE material_id = ? ORDER BY id').all(materialId) as QuizQuestionRow[]
+
+export const getProjects = (materialId: string) =>
+  getDb().prepare('SELECT * FROM projects WHERE material_id = ? ORDER BY id').all(materialId) as ProjectRow[]
+
+export function recordQuizAttempt(a: { materialId: string; userId: string; questionId: number; correct: boolean }) {
+  getDb()
+    .prepare('INSERT INTO quiz_attempts (material_id, user_id, question_id, correct) VALUES (?, ?, ?, ?)')
+    .run(a.materialId, a.userId, a.questionId, a.correct ? 1 : 0)
+}
+
+/**
+ * Concept tags whose most recent attempt (per question) came out wrong. Drives
+ * the flashcard order and the quiz end screen.
+ */
+export function quizWeakConcepts(materialId: string, userId: string): string[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT q.concept AS concept, a.correct AS correct
+         FROM quiz_attempts a
+         JOIN quiz_questions q ON q.id = a.question_id
+        WHERE a.material_id = @m AND a.user_id = @u
+          AND a.id IN (
+            SELECT MAX(id) FROM quiz_attempts
+             WHERE material_id = @m AND user_id = @u
+             GROUP BY question_id
+          )`,
+    )
+    .all({ m: materialId, u: userId }) as { concept: string; correct: number }[]
+
+  const weak = new Set<string>()
+  for (const r of rows) if (!r.correct && r.concept) weak.add(r.concept)
+  return [...weak]
 }

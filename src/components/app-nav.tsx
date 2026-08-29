@@ -10,12 +10,15 @@ const items = [
   { href: '/app/credits', key: 'credits' },
 ] as const
 
-export function AppNav({ t }: { t: Dict }) {
+/** Owner-only, matching the page's own check. */
+const ownerItems = [{ href: '/app/audit', key: 'audit' }] as const
+
+export function AppNav({ t, isOwner = false }: { t: Dict; isOwner?: boolean }) {
   const pathname = usePathname()
 
   return (
     <nav style={{ display: 'flex', gap: 4, marginTop: -8, overflowX: 'auto' }}>
-      {items.map((it) => {
+      {[...items, ...(isOwner ? ownerItems : [])].map((it) => {
         const active = it.href === '/app' ? pathname === '/app' : pathname.startsWith(it.href)
         return (
           <Link

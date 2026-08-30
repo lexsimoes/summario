@@ -23,6 +23,11 @@ version of the same thing.
 - **Credits are charged at job start and refunded on failure.** The ledger is
   append-only; balance is `SUM(delta)`. The study set is the exception: it is
   derived from a guide already paid for and costs nothing.
+- **Access is invite-only; there is no self-signup.** The owner creates
+  single-use invite links from `/app/admin`, and only the token's SHA-256 is
+  stored. Disabling an account is reversible and checked on every request, not
+  just at sign-in; deleting is irreversible and takes the rendered PDFs off the
+  volume as well as the rows. Admin API routes answer 404, never 403.
 - **Jobs run in-process, off a durable queue.** One worker, one job at a time,
   claimed from the `jobs` table. Still the seam to replace with a real queue
   later. A restart no longer loses work: `resumeJobs()` runs from
@@ -41,6 +46,11 @@ Typecheck and build are **not** verification — three shipped bugs passed both.
 Run the thing:
 - `npm run render -- fixtures/sample.html` exercises Chromium + KaTeX + the PDF
   validators with no API key.
+- The admin and invite flows can be exercised end to end with no API key at all:
+  seed two accounts, `npm start`, and drive the routes with fetch. Structure
+  checks are not enough here — the interesting failures (a disabled user's live
+  cookie, a PDF left on disk after a delete) only show up against a real server
+  and a real database file.
 - A real generation has to be run on the deployed instance, which is the only
   place the API key lives.
 

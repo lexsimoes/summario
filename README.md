@@ -77,10 +77,15 @@ password. `pdftotext` must be on PATH: `brew install poppler` on macOS,
   blueprint's cascade: saved cookie → `Accept-Language` → English. Geolocation
   deliberately does not lead; the owner is a Brazilian in New York, so geo
   guesses wrong on day one.
-- `/login` — invite-only. There is no sign-up flow: accounts are created with
-  `npm run seed`.
-- `/app` — overview, `/app/new`, `/app/history`, `/app/credits`, and
-  `/app/audit` for the owner account only. A finished document at
+- `/login` — invite-only. There is no open sign-up: the first account comes from
+  `npm run seed`, and everyone after that comes from an invite the owner
+  generates.
+- `/join/<token>` — the invite link. Single use, good for seven days, carrying a
+  credit grant the owner sets per invite. Only the token's SHA-256 is stored, so
+  the link lives in the clipboard it was copied to and nowhere else.
+- `/app` — overview, `/app/new`, `/app/history`, `/app/credits`, and, for the
+  owner account only, `/app/admin` (invite, disable, delete, adjust credits) and
+  `/app/audit`. A finished document at
   `/app/documents/<id>` carries its study set: quiz, flashcards, project briefs.
 
 The site inherits the generated document's visual language on purpose: same

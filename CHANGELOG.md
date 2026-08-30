@@ -6,6 +6,40 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### An owner console: invites, disabling, deleting
+Adding someone meant running the seed script over SSH, and removing them had no
+answer at all. There is a People page now, owner-only.
+
+Invites are single-use links, good for seven days, carrying a credit grant set
+per invite — a tester gets 2, a friend gets 20. Only the SHA-256 of the token is
+stored, so the link exists in exactly one place, the clipboard it was copied to,
+and a database dump grants nobody entry. The URL is composed in the browser from
+the origin it actually reached: asking a server behind a reverse proxy to guess
+its own public address is how you mail somebody a link to localhost. Claiming an
+invite and creating the account are one transaction, so two people opening the
+same link cannot both spend it. An invite addressed to an email only works for
+that email, and no invite can ever touch an account that already exists.
+
+Removing someone is deliberately two different things. Disabling is reversible,
+keeps every row, and is checked on every request rather than only at sign-in — so
+it ends the sessions the account already holds instead of waiting thirty days for
+a cookie to expire. Signing in to a disabled account answers 403 and says so,
+because telling someone their password is wrong sends them to reset a password
+that works fine. Deleting is irreversible: rows cascade, and the rendered PDFs
+are taken off the volume too, since those do not live in the database. It is
+confirmed by typing the email — an OK button is too easy to hit on the wrong row.
+Neither action can be aimed at your own account, and the last owner cannot be
+deleted.
+
+Every admin route re-checks ownership for itself and answers 404 rather than 403:
+a UI that hides a button is not access control, and a 403 confirms the endpoint
+exists to somebody who should not know that. Every action lands in the audit log.
+
+Verified by running it, not by compiling it: 49 checks against a live server and
+a real SQLite file, covering the perimeter, both invite shapes, the double-use
+race, the disable-ends-the-session path, the self-lockout guards, and the
+cascade — including that the PDF actually leaves the disk.
+
 ### The study loop is finished: quiz, flashcards, Anki export, project briefs
 The homepage has described a five-step method since the first deploy — read the
 guide, close it and answer, turn gaps into cards, let Anki space them, build

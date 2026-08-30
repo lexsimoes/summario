@@ -1,0 +1,326 @@
+'use client'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import type { Dict } from '@/lib/i18n'
+import type { InviteState } from '@/lib/invites'
+
+export interface AdminInvite {
+  id: string; email: string; note: string; credits: number
+  created_at: string; state: InviteState
+}
+
+export interface AdminUser {
+  id: string; email: string; name: string
+  plan: 'owner' | 'member'; status: 'active' | 'disabled'
+  materials: number; balance: number; last_seen: string | null; isSelf: boolean
+}
+
+/** Which row has an open confirmation, and which kind. */
+type Pending = { userId: string; kind: 'delete' | 'credits' } | null
+
+export function AdminPanel({
+  t, locale, users, invites,
+}: { t: Dict; locale: string; users: AdminUser[]; invites: AdminInvite[] }) {
+  const router = useRouter()
+  const a = t.app.admin
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+  const [link, setLink] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [pending, setPending] = useState<Pending>(null)
+  const [value, setValue] = useState('')
+
+  const fmt = new Intl.DateTimeFormat(locale === 'pt' ? 'pt-BR' : 'en-US', { dateStyle: 'medium' })
+  const day = (iso: string | null) => (iso ? fmt.format(new Date(iso.replace(' ', 'T') + 'Z')) : a.never)
+
+  function open(userId: string, kind: 'delete' | 'credits') {
+    setError('')
+    setValue(kind === 'credits' ? '10' : '')
+    setPending({ userId, kind })
+  }
+  const close = () => { setPending(null); setValue('') }
+
+  /** Every mutation goes through here, so no failure can pass silently. */
+  async function send(url: string, init: RequestInit, key: string) {
+    setBusy(key)
+    setError('')
+    try {
+      const res = await fetch(url, init)
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        setError(
+          body.error === 'cannot_delete_self' || body.error === 'cannot_disable_self'
+            ? a.errSelf
+            : body.error === 'last_owner'
+              ? a.errLastOwner
+              : a.errGeneric,
+        )
+        return null
+      }
+      return (await res.json().catch(() => ({}))) as { token?: string }
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const patch = (u: AdminUser, payload: Record<string, unknown>) =>
+    send(
+      `/api/admin/users/${u.id}`,
+      { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) },
+      u.id,
+    )
+
+  async function createInvite(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = e.currentTarget
+    const data = new FormData(form)
+    const body = await send(
+      '/api/admin/invites',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: data.get('email'),
+          note: data.get('note'),
+          credits: Number(data.get('credits')),
+        }),
+      },
+      'invite',
+    )
+    if (!body?.token) return
+    // Composed here, from the origin the browser actually reached: the server
+    // sits behind a reverse proxy and does not reliably know its public URL.
+    setLink(`${window.location.origin}/join/${body.token}`)
+    setCopied(false)
+    form.reset()
+    router.refresh()
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+    } catch {
+      // Clipboard permission can be refused. The link is on screen and
+      // selectable either way, so this does not deserve an error.
+    }
+  }
+
+  async function confirmCredits(u: AdminUser) {
+    const credits = Number(value)
+    if (!Number.isFinite(credits) || credits === 0) return close()
+    const ok = await patch(u, { credits })
+    close()
+    if (ok) router.refresh()
+  }
+
+  async function confirmDelete(u: AdminUser) {
+    // Typing the email is the entire safety mechanism: an OK button is far too
+    // easy to hit on the wrong row.
+    if (value.trim().toLowerCase() !== u.email.toLowerCase()) {
+      setError(a.confirmMismatch)
+      return
+    }
+    const ok = await send(`/api/admin/users/${u.id}`, { method: 'DELETE' }, u.id)
+    close()
+    if (ok) router.refresh()
+  }
+
+  async function toggle(u: AdminUser) {
+    const ok = await patch(u, { status: u.status === 'disabled' ? 'active' : 'disabled' })
+    if (ok) router.refresh()
+  }
+
+  async function revoke(id: string) {
+    const ok = await send(`/api/admin/invites/${id}`, { method: 'DELETE' }, id)
+    if (ok) router.refresh()
+  }
+
+  return (
+    <>
+      <h1 className="title" style={{ marginBottom: 4 }}>{a.title}</h1>
+      <p className="small measure" style={{ marginBottom: 30 }}>{a.lede}</p>
+
+      {error && <p className="error-note" style={{ marginBottom: 22 }}>{error}</p>}
+
+      <section className="card" style={{ marginBottom: 34 }}>
+        <h2 className="subtitle" style={{ marginBottom: 2 }}>{a.inviteTitle}</h2>
+        <p className="small" style={{ marginBottom: 20 }}>{a.inviteLede}</p>
+
+        <form onSubmit={createInvite}>
+          <div className="grid g2" style={{ gap: 12 }}>
+            <div className="field">
+              <label className="label" htmlFor="email">{a.inviteEmail}</label>
+              <input className="input" id="email" name="email" type="email" />
+              <p className="hint">{a.inviteEmailHint}</p>
+            </div>
+            <div className="field">
+              <label className="label" htmlFor="credits">{a.inviteCredits}</label>
+              <input className="input" id="credits" name="credits" type="number" min={0} max={500} defaultValue={4} required />
+            </div>
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="note">{a.inviteNote}</label>
+            <input className="input" id="note" name="note" type="text" maxLength={120} placeholder={a.inviteNotePlaceholder} />
+          </div>
+          <button className="btn btn-primary" type="submit" disabled={busy === 'invite'}>
+            {busy === 'invite' ? a.inviteWorking : a.inviteSubmit}
+          </button>
+        </form>
+
+        {link && (
+          <div className="card card-quiet" style={{ marginTop: 22 }}>
+            <p className="small" style={{ marginBottom: 10 }}>{a.inviteReady}</p>
+            <div className="row" style={{ gap: 10 }}>
+              <input
+                className="input mono"
+                readOnly
+                value={link}
+                onFocus={(e) => e.currentTarget.select()}
+                style={{ flex: 1, fontSize: 13 }}
+              />
+              <button className="btn btn-quiet" type="button" onClick={copy}>
+                {copied ? a.copied : a.copy}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <h2 className="subtitle" style={{ marginBottom: 12 }}>{a.invitesTitle}</h2>
+      {invites.length === 0 ? (
+        <div className="empty" style={{ marginBottom: 34 }}>{a.invitesEmpty}</div>
+      ) : (
+        <div className="card card-flush" style={{ marginBottom: 34 }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{a.colWho}</th><th>{a.colCredits}</th><th>{a.colState}</th>
+                <th>{a.colCreated}</th><th>{a.colActions}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invites.map((i) => (
+                <tr key={i.id}>
+                  <td>
+                    {i.email || <span className="small" style={{ color: 'var(--muted)' }}>{a.openLink}</span>}
+                    {i.note && <div className="tiny" style={{ color: 'var(--muted)' }}>{i.note}</div>}
+                  </td>
+                  <td>{i.credits}</td>
+                  <td>
+                    <span className={i.state === 'pending' ? 'pill pill-accent' : 'pill'}>{a.state[i.state]}</span>
+                  </td>
+                  <td className="tiny" style={{ whiteSpace: 'nowrap' }}>{day(i.created_at)}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    {i.state === 'pending' && (
+                      <button className="btn btn-quiet btn-sm" type="button" disabled={busy === i.id} onClick={() => revoke(i.id)}>
+                        {a.revoke}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2 className="subtitle" style={{ marginBottom: 12 }}>{a.usersTitle}</h2>
+      <div className="card card-flush">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>{a.colUser}</th><th>{a.colPlan}</th><th>{a.colMaterials}</th>
+              <th>{a.colBalance}</th><th>{a.colLastSeen}</th><th>{a.colActions}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => {
+              const open_ = pending?.userId === u.id ? pending.kind : null
+              return (
+                <FragmentRow key={u.id}>
+                  <tr style={u.status === 'disabled' ? { opacity: 0.55 } : undefined}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>
+                        {u.name || u.email}
+                        {u.isSelf && <span className="tiny" style={{ color: 'var(--muted)' }}> · {a.you}</span>}
+                      </div>
+                      <div className="tiny" style={{ color: 'var(--muted)' }}>{u.email}</div>
+                    </td>
+                    <td>
+                      <span className="pill">{a.plan[u.plan]}</span>
+                      {u.status === 'disabled' && (
+                        <div className="tiny" style={{ color: 'var(--muted)' }}>{a.statusDisabled}</div>
+                      )}
+                    </td>
+                    <td>{u.materials}</td>
+                    <td>{u.plan === 'owner' ? '∞' : u.balance}</td>
+                    <td className="tiny" style={{ whiteSpace: 'nowrap' }}>{day(u.last_seen)}</td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button className="btn btn-quiet btn-sm" type="button" disabled={busy === u.id} onClick={() => open(u.id, 'credits')}>
+                        {a.addCredits}
+                      </button>{' '}
+                      {!u.isSelf && (
+                        <>
+                          <button className="btn btn-quiet btn-sm" type="button" disabled={busy === u.id} onClick={() => toggle(u)}>
+                            {u.status === 'disabled' ? a.enable : a.disable}
+                          </button>{' '}
+                          <button className="btn btn-danger btn-sm" type="button" disabled={busy === u.id} onClick={() => open(u.id, 'delete')}>
+                            {a.remove}
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+
+                  {open_ && (
+                    <tr>
+                      <td colSpan={6} style={{ background: 'var(--paper-2)' }}>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            void (open_ === 'delete' ? confirmDelete(u) : confirmCredits(u))
+                          }}
+                        >
+                          <p className="small" style={{ marginBottom: 10, whiteSpace: 'pre-line' }}>
+                            {open_ === 'delete' ? a.confirmDelete : `${a.addCreditsPrompt}`}
+                          </p>
+                          <div className="row" style={{ gap: 10 }}>
+                            <input
+                              className="input"
+                              autoFocus
+                              type={open_ === 'delete' ? 'text' : 'number'}
+                              value={value}
+                              onChange={(e) => setValue(e.currentTarget.value)}
+                              placeholder={open_ === 'delete' ? u.email : ''}
+                              style={{ maxWidth: 340 }}
+                            />
+                            <button
+                              className={open_ === 'delete' ? 'btn btn-danger' : 'btn btn-primary'}
+                              type="submit"
+                              disabled={busy === u.id}
+                            >
+                              {open_ === 'delete' ? a.remove : a.addCredits}
+                            </button>
+                            <button className="btn btn-quiet" type="button" onClick={close}>
+                              {a.cancel}
+                            </button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  )}
+                </FragmentRow>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+/** A keyed pair of <tr>s. A bare fragment cannot carry the key React wants here. */
+function FragmentRow({ children }: { children: React.ReactNode }) {
+  return <>{children}</>
+}

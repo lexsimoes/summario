@@ -11,7 +11,10 @@ const items = [
 ] as const
 
 /** Owner-only, matching the page's own check. */
-const ownerItems = [{ href: '/app/audit', key: 'audit' }] as const
+const ownerItems = [
+  { href: '/app/admin', key: 'admin' },
+  { href: '/app/audit', key: 'audit' },
+] as const
 
 export function AppNav({ t, isOwner = false }: { t: Dict; isOwner?: boolean }) {
   const pathname = usePathname()

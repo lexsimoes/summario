@@ -20,6 +20,13 @@ export type AuditEvent =
   | 'derive'
   | 'refund'
   | 'grant'
+  | 'login_blocked'
+  | 'invite_created'
+  | 'invite_revoked'
+  | 'invite_claimed'
+  | 'user_disabled'
+  | 'user_enabled'
+  | 'user_deleted'
 
 export interface AuditRow {
   id: number

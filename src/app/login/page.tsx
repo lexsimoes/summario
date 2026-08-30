@@ -25,7 +25,7 @@ export default async function LoginPage() {
           <p className="small" style={{ marginBottom: 28 }}>{t.login.lede}</p>
 
           <div className="card">
-            <LoginForm t={{ email: t.login.email, password: t.login.password, submit: t.login.submit, working: t.login.working, failed: t.login.failed, throttled: t.login.throttled }} />
+            <LoginForm t={{ email: t.login.email, password: t.login.password, submit: t.login.submit, working: t.login.working, failed: t.login.failed, throttled: t.login.throttled, disabled: t.login.disabled }} />
           </div>
 
           <p className="tiny center" style={{ marginTop: 22 }}>

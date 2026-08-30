@@ -52,6 +52,13 @@ function migrate(db: Database.Database) {
     db.exec('ALTER TABLE materials ADD COLUMN derivatives_error TEXT')
   }
 
+  const userColumns = new Set(
+    (db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).map((c) => c.name),
+  )
+  if (!userColumns.has('status')) {
+    db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
+  }
+
   const quizColumns = new Set(
     (db.prepare('PRAGMA table_info(quiz_questions)').all() as { name: string }[]).map((c) => c.name),
   )
@@ -69,6 +76,10 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   -- 'owner' is never blocked by balance; every other plan is.
   plan TEXT NOT NULL DEFAULT 'member',
+  -- 'disabled' keeps every row the account owns and refuses the login. It is the
+  -- reversible half of removing someone; deleting is the other, and is separate
+  -- on purpose.
+  status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -189,6 +200,24 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS audit_by_time ON audit_log(id DESC);
+
+-- An invite is a one-time right to create one account with a set credit grant.
+-- Only the SHA-256 of the token is stored: the link the owner copies exists in
+-- exactly one place, their clipboard, and a database dump grants nobody entry.
+CREATE TABLE IF NOT EXISTS invites (
+  id TEXT PRIMARY KEY,
+  token_hash TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  credits INTEGER NOT NULL DEFAULT 4,
+  created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  used_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  revoked_at TEXT
+);
+CREATE INDEX IF NOT EXISTS invites_by_time ON invites(created_at DESC);
 `
 
 export interface UserRow {
@@ -197,6 +226,7 @@ export interface UserRow {
   name: string
   password_hash: string
   plan: 'owner' | 'member'
+  status: 'active' | 'disabled'
   created_at: string
 }
 
@@ -255,6 +285,144 @@ export function createUser(u: { id: string; email: string; name: string; passwor
     )
     .run({ ...u, email: u.email.toLowerCase(), plan: u.plan ?? 'member' })
 }
+
+/* ------------------------------------------------------- users: admin view */
+
+export interface AdminUserRow extends UserRow {
+  materials: number
+  balance: number
+  last_seen: string | null
+}
+
+/**
+ * One row per account with the three numbers the owner actually decides on:
+ * how much they have made, what they have left, and when they were last here.
+ * Correlated subqueries rather than joins — with GROUP BY, a user with two
+ * materials and three ledger rows would multiply into six and the sums would
+ * both be wrong.
+ */
+export const listUsers = () =>
+  getDb()
+    .prepare(
+      `SELECT u.*,
+              (SELECT COUNT(*) FROM materials m WHERE m.user_id = u.id) AS materials,
+              (SELECT COALESCE(SUM(l.delta), 0) FROM credit_ledger l WHERE l.user_id = u.id) AS balance,
+              (SELECT MAX(a.created_at) FROM audit_log a WHERE a.user_id = u.id AND a.event = 'login') AS last_seen
+         FROM users u
+        ORDER BY u.created_at ASC`,
+    )
+    .all() as AdminUserRow[]
+
+export const emailTaken = (email: string) =>
+  Boolean(
+    getDb().prepare('SELECT 1 FROM users WHERE email = ?').get(email.toLowerCase().trim()),
+  )
+
+export const countOwners = () =>
+  (getDb().prepare("SELECT COUNT(*) AS n FROM users WHERE plan = 'owner'").get() as { n: number }).n
+
+export const setUserStatus = (id: string, status: 'active' | 'disabled') =>
+  getDb().prepare('UPDATE users SET status = ? WHERE id = ?').run(status, id)
+
+/**
+ * Returns the material ids that were removed, because their rendered PDFs live
+ * on the volume and the caller has to delete those too. Everything else goes
+ * with the row: `ON DELETE CASCADE` plus `foreign_keys = ON` takes the
+ * materials, the ledger, the cards and the questions.
+ */
+export function deleteUser(id: string): string[] {
+  const db = getDb()
+  const ids = (
+    db.prepare('SELECT id FROM materials WHERE user_id = ?').all(id) as { id: string }[]
+  ).map((r) => r.id)
+  db.prepare('DELETE FROM users WHERE id = ?').run(id)
+  return ids
+}
+
+/* ---------------------------------------------------------------- invites */
+
+export interface InviteRow {
+  id: string
+  token_hash: string
+  email: string
+  note: string
+  credits: number
+  created_by: string | null
+  created_at: string
+  expires_at: string
+  used_at: string | null
+  used_by: string | null
+  revoked_at: string | null
+}
+
+export function createInvite(i: {
+  id: string; tokenHash: string; email: string; note: string; credits: number
+  createdBy: string; expiresAt: string
+}) {
+  getDb()
+    .prepare(
+      `INSERT INTO invites (id, token_hash, email, note, credits, created_by, expires_at)
+       VALUES (@id, @tokenHash, @email, @note, @credits, @createdBy, @expiresAt)`,
+    )
+    .run({ ...i, email: i.email.toLowerCase().trim() })
+}
+
+export const listInvites = (limit = 100) =>
+  getDb().prepare('SELECT * FROM invites ORDER BY created_at DESC LIMIT ?').all(limit) as InviteRow[]
+
+export const getInviteByHash = (tokenHash: string) =>
+  getDb().prepare('SELECT * FROM invites WHERE token_hash = ?').get(tokenHash) as InviteRow | undefined
+
+export const getInvite = (id: string) =>
+  getDb().prepare('SELECT * FROM invites WHERE id = ?').get(id) as InviteRow | undefined
+
+export const revokeInvite = (id: string) =>
+  getDb()
+    .prepare("UPDATE invites SET revoked_at = datetime('now') WHERE id = ? AND used_at IS NULL")
+    .run(id)
+
+/**
+ * Create the account and burn the invite, or do neither.
+ *
+ * The claim is a conditional UPDATE rather than a read-then-write, because two
+ * people opening the same link at the same moment would both pass a separate
+ * check and only one of them can have the credits. The insert comes first
+ * inside the transaction because `used_by` is a foreign key to the row it
+ * creates, and SQLite checks that immediately.
+ *
+ * Returns false when somebody else got there first; nothing is written.
+ */
+export function claimInviteForNewUser(
+  inviteId: string,
+  u: { id: string; email: string; name: string; passwordHash: string },
+): boolean {
+  const db = getDb()
+  const run = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO users (id, email, name, password_hash, plan) VALUES (?, ?, ?, ?, 'member')`,
+    ).run(u.id, u.email.toLowerCase().trim(), u.name, u.passwordHash)
+
+    const claimed = db
+      .prepare(
+        `UPDATE invites SET used_at = datetime('now'), used_by = ?
+          WHERE id = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > datetime('now')`,
+      )
+      .run(u.id, inviteId).changes
+
+    if (!claimed) throw new InviteRaceLost()
+    return true
+  })
+
+  try {
+    return run()
+  } catch (err) {
+    if (err instanceof InviteRaceLost) return false
+    throw err
+  }
+}
+
+/** Internal signal, used only to roll the transaction above back. */
+class InviteRaceLost extends Error {}
 
 /* -------------------------------------------------------------- materials */
 

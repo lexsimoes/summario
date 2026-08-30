@@ -35,6 +35,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid' }, { status: 401 })
   }
 
+  // A disabled account is a real password on a closed door. Distinguishing it
+  // from a wrong password is deliberate: the person needs to know that trying
+  // again will not help, and they already proved they own the account.
+  if (user.status === 'disabled') {
+    recordAudit({ event: 'login_blocked', userId: user.id, ip, detail: account })
+    return NextResponse.json({ error: 'account_disabled' }, { status: 403 })
+  }
+
   clearRateLimit(`login:ip:${ip}`)
   clearRateLimit(`login:account:${account}`)
 

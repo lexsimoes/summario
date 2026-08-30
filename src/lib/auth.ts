@@ -96,7 +96,22 @@ export async function currentUser(): Promise<UserRow | null> {
   if (!token) return null
   const userId = verify(token)
   if (!userId) return null
-  return getUserById(userId) ?? null
+  const user = getUserById(userId)
+  // Checked on every request, not only at sign-in: disabling an account has to
+  // end the sessions it already has, or "disabled" means nothing until the
+  // cookie happens to expire thirty days later.
+  if (!user || user.status === 'disabled') return null
+  return user
+}
+
+/**
+ * The owner gate for API routes. Pages use `requireUser()` and `notFound()`;
+ * routes get null and answer 404 themselves, because a 403 confirms the
+ * endpoint exists to someone who should not know that.
+ */
+export async function currentOwner(): Promise<UserRow | null> {
+  const user = await currentUser()
+  return user && user.plan === 'owner' ? user : null
 }
 
 /** For protected server components. Redirects instead of throwing. */

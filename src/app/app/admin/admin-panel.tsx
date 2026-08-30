@@ -148,7 +148,7 @@ export function AdminPanel({
         <p className="small" style={{ marginBottom: 20 }}>{a.inviteLede}</p>
 
         <form onSubmit={createInvite}>
-          <div className="grid g2" style={{ gap: 12 }}>
+          <div className="grid g2" style={{ gap: 12, alignItems: 'start' }}>
             <div className="field">
               <label className="label" htmlFor="email">{a.inviteEmail}</label>
               <input className="input" id="email" name="email" type="email" />
@@ -245,7 +245,7 @@ export function AdminPanel({
                         {u.name || u.email}
                         {u.isSelf && <span className="tiny" style={{ color: 'var(--muted)' }}> · {a.you}</span>}
                       </div>
-                      <div className="tiny" style={{ color: 'var(--muted)' }}>{u.email}</div>
+                      {u.name && <div className="tiny" style={{ color: 'var(--muted)' }}>{u.email}</div>}
                     </td>
                     <td>
                       <span className="pill">{a.plan[u.plan]}</span>

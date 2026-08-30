@@ -45,7 +45,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
 
               {invite.credits > 0 && (
                 <p className="pill pill-accent" style={{ marginBottom: 20, display: 'inline-block' }}>
-                  {invite.credits} {t.join.creditsGift}
+                  {invite.credits} {invite.credits === 1 ? t.join.creditsGiftOne : t.join.creditsGift}
                 </p>
               )}
 

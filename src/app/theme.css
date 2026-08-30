@@ -214,6 +214,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .field { display: block; }
 .field + .field { margin-top: 18px; }
+/* Side by side in a grid the stacking margin is wrong: the row already spaces
+   them, and it drops the second column below the first. */
+.grid > .field + .field { margin-top: 0; }
 .label { display: block; font-size: 13px; font-weight: 650; letter-spacing: -0.005em; margin-bottom: 7px; color: var(--ink); }
 .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 

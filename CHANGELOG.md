@@ -6,6 +6,43 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### Motion and depth, and a frosted nav that had quietly stopped frosting
+The site had colour and type but no behaviour: nothing moved, nothing responded,
+and depth came from three stacked shadows that read as blur rather than light.
+
+There is a motion system now, in two tiers. Micro (colour, background, border)
+runs at 160ms on the default easing — a curve on a 140ms colour change is
+invisible work. Macro (transform, layout, shadow) runs at 380ms on one shared
+curve that decelerates hard at the end, so movement lands instead of stopping.
+One long far-thrown shadow replaces the stack for anything that lifts. Cards lift
+on hover only where they promise something; a card that is prose in a box does
+not. Sections arrive with a short blur-and-settle as they enter view, the primary
+button catches a slow sweep of light, and the page sits on two very faint washes
+instead of one flat sheet.
+
+Two things found while verifying it, both worth more than the animation:
+
+**The nav's `backdrop-filter` was doing nothing.** Writing the standard property
+next to its `-webkit-` alias made Lightning CSS treat the pair as one prefixed
+declaration and emit *only* the `-webkit-` form, so any browser implementing just
+the standard property got no blur — silently, since a missing blur looks like a
+design choice. It arrived with the Turbopack switch and shipped unnoticed.
+Writing only the standard property makes the build emit both.
+
+**The entrance animation could strand content invisible.** A background tab
+suspends the IntersectionObserver *and* freezes animations on their first
+keyframe, which was the transparent one — so a section could sit at zero opacity
+forever. Fixed in three places: the effect never stages anything while the
+document is hidden, a failsafe removes the attribute if the observer has not
+delivered its guaranteed first callback, and the animation carries no fill-mode
+so the resting state is the visible one. Decoration must not be able to hide the
+page; that principle is now enforced rather than assumed.
+
+Also dropped `will-change: transform` from the lifting cards. Thirteen
+permanently promoted compositing layers is a cost paid on every frame for a
+transform that runs only under the pointer, and standing layers feed the same
+repaint artefacts the nav comment describes.
+
 ### An owner console: invites, disabling, deleting
 Adding someone meant running the seed script over SSH, and removing them had no
 answer at all. There is a People page now, owner-only.

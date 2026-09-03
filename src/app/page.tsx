@@ -4,6 +4,7 @@ import { tr } from '@/lib/i18n'
 import { SiteNav } from '@/components/site-nav'
 import { SiteFooter } from '@/components/site-footer'
 import { SampleGuide } from '@/components/sample-guide'
+import { Reveal } from '@/components/reveal'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,15 +58,15 @@ export default async function Home() {
 
         <div className="wrap" style={{ marginTop: 'clamp(36px, 5vw, 64px)' }}>
           <p className="kicker muted">{t.problem.layersTitle}</p>
-          <div className="grid g3">
+          <Reveal className="grid g3">
             {t.problem.layers.map((l, i) => (
-              <div key={l.t} className="card">
+              <div key={l.t} className="card card-lift">
                 <div className="step-num">{i + 1}</div>
                 <h3 className="subtitle">{l.t}</h3>
                 <p className="small" style={{ margin: 0 }}>{l.d}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -75,15 +76,15 @@ export default async function Home() {
           <p className="kicker">{t.how.kicker}</p>
           <h2 className="title measure">{t.how.title}</h2>
 
-          <div className="grid g2" style={{ marginTop: 44 }}>
+          <Reveal className="grid g2" style={{ marginTop: 44 }}>
             {t.how.steps.map((s, i) => (
-              <div key={s.t} className="card" style={{ background: 'var(--surface)' }}>
+              <div key={s.t} className="card card-lift" style={{ background: 'var(--surface)' }}>
                 <div className="step-num">{i + 1}</div>
                 <h3 className="subtitle">{s.t}</h3>
                 <p className="small" style={{ margin: 0 }}>{s.d}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -95,7 +96,7 @@ export default async function Home() {
           <p className="lede measure" style={{ marginTop: 16 }}>{t.anatomy.lede}</p>
 
           <div className="split" style={{ marginTop: 'clamp(36px, 5vw, 64px)', alignItems: 'start' }}>
-            <div className="card card-raised" style={{ position: 'sticky', top: 92 }}>
+            <div className="card card-raised sticky-aside">
               <SampleGuide locale={locale} />
             </div>
 
@@ -124,11 +125,11 @@ export default async function Home() {
           <h2 className="title measure" style={{ color: '#fff' }}>{t.langs.title}</h2>
           <p className="lede measure" style={{ marginTop: 16, color: 'rgba(255,255,255,.72)' }}>{t.langs.lede}</p>
 
-          <div className="grid g3" style={{ marginTop: 44 }}>
+          <Reveal className="grid g3" style={{ marginTop: 44 }}>
             {t.langs.modes.map((m) => (
               <div
                 key={m.n}
-                className="card"
+                className="card card-lift"
                 style={{ background: 'rgba(255,255,255,.06)', borderColor: 'rgba(255,255,255,.14)' }}
               >
                 <div className="row" style={{ marginBottom: 12 }}>
@@ -142,7 +143,7 @@ export default async function Home() {
                 <p className="small" style={{ margin: 0, color: 'rgba(255,255,255,.68)' }}>{m.d}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -196,11 +197,11 @@ export default async function Home() {
           <h2 className="title measure">{t.pricing.title}</h2>
           <p className="lede measure" style={{ marginTop: 16 }}>{t.pricing.lede}</p>
 
-          <div className="grid g3" style={{ marginTop: 44, alignItems: 'stretch' }}>
+          <Reveal className="grid g3" style={{ marginTop: 44, alignItems: 'stretch' }}>
             {t.pricing.packs.map((p) => (
               <div
                 key={p.n}
-                className={p.best ? 'card card-raised' : 'card'}
+                className={p.best ? 'card card-raised card-lift' : 'card card-lift'}
                 style={{
                   background: 'var(--surface)',
                   borderColor: p.best ? 'var(--accent)' : undefined,
@@ -221,7 +222,7 @@ export default async function Home() {
                 <button className="btn btn-ghost btn-block" disabled>{t.app.credits.buy}</button>
               </div>
             ))}
-          </div>
+          </Reveal>
 
           <p className="tiny" style={{ marginTop: 22, maxWidth: '62ch' }}>{t.pricing.note}</p>
         </div>

@@ -50,6 +50,23 @@
   --shadow-s: 0 1px 2px rgba(22,22,26,.05), 0 2px 8px rgba(22,22,26,.04);
   --shadow-m: 0 2px 6px rgba(22,22,26,.06), 0 12px 32px rgba(22,22,26,.07);
   --shadow-l: 0 8px 24px rgba(22,22,26,.08), 0 32px 64px rgba(22,22,26,.10);
+
+  /* One long, far-thrown shadow for anything that lifts off the page. The three
+     above stack blur on blur; this one reads as a single light source and is the
+     only shadow a hover state should reach for. */
+  --lift: 0 30px 60px -30px rgba(22, 22, 26, .18);
+
+  /* Motion. Two tiers, deliberately:
+     — micro (colour, background, border) is fast and uses the default easing;
+       a curve on a 140ms colour change is invisible work.
+     — macro (transform, layout, shadow) is slower and always uses --ease, which
+       decelerates hard at the end so movement lands instead of stopping. */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --t-micro: 0.16s;
+  --t-macro: 0.38s;
+
+  /* Borders that respond to the pointer. */
+  --line-hover: #d8d0c4;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -67,7 +84,38 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Two very wide, very faint washes so the page is not a flat sheet of one
+   colour. Fixed, so they do not travel with the scroll and never read as
+   content. Behind everything, and inert to the pointer. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 14%, var(--accent-tint) 0, transparent 34%),
+    radial-gradient(circle at 88% 78%, var(--paper-2) 0, transparent 42%);
+}
+
 ::selection { background: var(--accent-glow); }
+
+/* Entrance for a section coming into view. The mid-point overshoot is what
+   makes it feel like the element settles rather than merely arrives.
+   Applied only by <Reveal>, which adds the attribute on mount — so with no
+   JavaScript, or with reduced motion, the content is simply visible. */
+@keyframes revealIn {
+  0%   { opacity: 0; filter: blur(8px); transform: translateY(18px); }
+  55%  { opacity: 1; filter: blur(2px); transform: translateY(-3px); }
+  100% { opacity: 1; filter: blur(0);   transform: translateY(0); }
+}
+[data-reveal='pending'] { opacity: 0; }
+/* No fill-mode on purpose. `both` would paint the 0% keyframe while the
+   animation is merely pending, which leaves the element invisible anywhere the
+   animation never starts — a background tab is enough to do it. Without it the
+   resting state is the visible one, and the keyframes only ever take over while
+   they are actually running. */
+[data-reveal='in'] { animation: revealIn .72s var(--ease); }
 
 a { color: inherit; text-decoration: none; }
 img, svg { max-width: 100%; display: block; }
@@ -140,9 +188,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
 
+/* Pins one column while the other scrolls past it. Only meaningful while there
+   are two columns — once .split collapses, a stuck element sits on top of the
+   content that was supposed to scroll beside it. Reset below, with .split. */
+.sticky-aside { position: sticky; top: 92px; }
+
 @media (max-width: 900px) {
   .g3, .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .split { grid-template-columns: minmax(0, 1fr); }
+  /* One column now: nothing left to sit beside, so let it scroll away. */
+  .sticky-aside { position: static; }
 }
 @media (max-width: 600px) {
   .g2, .g3, .g4 { grid-template-columns: minmax(0, 1fr); }
@@ -168,6 +223,24 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .card-raised { box-shadow: var(--shadow-m); border-color: var(--rule-soft); }
 .card-flush { padding: 0; overflow: hidden; }
 
+/* Opt-in, not automatic: a card that lifts is promising it does something. Most
+   cards on this site are just prose in a box, and lifting those is noise. */
+/* No `will-change` here on purpose. It would promote every one of these to its
+   own compositing layer permanently, for a transform that only runs while the
+   pointer is on it — and a page full of standing layers is what feeds the
+   repaint smearing the nav comment describes. The browser promotes on demand. */
+.card-lift {
+  transition:
+    transform var(--t-macro) var(--ease),
+    box-shadow var(--t-micro) ease,
+    border-color var(--t-micro) ease;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--lift);
+  border-color: var(--line-hover);
+}
+
 .numbered { counter-reset: step; }
 .step-num {
   display: inline-flex; align-items: center; justify-content: center;
@@ -185,13 +258,36 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 11px 22px;
   font-size: 14.5px; font-weight: 600; letter-spacing: -0.006em;
   cursor: pointer; white-space: nowrap;
-  transition: transform .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease, color .16s ease;
+  position: relative; overflow: hidden;
+  transition:
+    transform var(--t-macro) var(--ease),
+    box-shadow var(--t-micro) ease,
+    background var(--t-micro) ease,
+    border-color var(--t-micro) ease,
+    color var(--t-micro) ease;
 }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn:not(:disabled):active { transform: translateY(1px); }
+.btn:not(:disabled):hover { transform: translateY(-1px); }
+.btn:not(:disabled):active { transform: translateY(1px); transition-duration: .06s; }
 
 .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(46,32,88,.24), 0 8px 20px var(--accent-glow); }
-.btn-primary:not(:disabled):hover { background: var(--accent-ink); box-shadow: 0 2px 4px rgba(46,32,88,.28), 0 12px 28px var(--accent-glow); }
+.btn-primary:not(:disabled):hover { background: var(--accent-ink); box-shadow: 0 2px 4px rgba(46,32,88,.28), 0 14px 30px var(--accent-glow); }
+
+/* A light sweep across the primary button, idle most of the cycle. It reads as
+   the surface catching the light rather than as an animation, which is the only
+   reason a looping effect is tolerable on a button you see on every page. */
+.btn-primary::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.22) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: sheen 5.5s var(--ease) infinite;
+  pointer-events: none;
+}
+@keyframes sheen {
+  0%, 62% { transform: translateX(-120%); }
+  82%, 100% { transform: translateX(120%); }
+}
 
 .btn-ghost { background: transparent; border-color: var(--rule); color: var(--ink); }
 .btn-ghost:not(:disabled):hover { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
@@ -231,6 +327,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   transition: border-color .14s ease, box-shadow .14s ease;
 }
 .input::placeholder, .textarea::placeholder { color: var(--faint); }
+.input:hover, .select:hover, .textarea:hover, .file:hover { border-color: var(--line-hover); }
 .input:focus, .select:focus, .textarea:focus, .file:focus {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
 }
@@ -333,10 +430,29 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .nav {
   position: sticky; top: 0; z-index: 50;
   background: rgba(250, 248, 245, 0.82);
+  /*
+   * Standard property only. Writing the -webkit- alias next to it made
+   * Lightning CSS (Turbopack's CSS pipeline) treat the pair as one prefixed
+   * declaration and emit ONLY the -webkit- form — so any browser that
+   * implements just the standard property got no blur at all, silently. Let the
+   * build add prefixes; it knows the targets and we do not.
+   */
   backdrop-filter: saturate(180%) blur(14px);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid transparent;
   transition: border-color .2s ease;
+  /*
+   * A sticky bar with a backdrop-filter re-samples the pixels behind it on
+   * every scroll frame, and without a compositing layer of its own some
+   * browser/GPU pairs keep the previous sample — text from elsewhere smeared
+   * across the page, clearing on the next repaint. Promoting the bar gives the
+   * compositor a stable layer to invalidate.
+   *
+   * Deliberately NOT `isolation: isolate` or `contain: paint`, which look like
+   * they belong here: both make the element its own backdrop root, so it would
+   * sample an empty backdrop and the blur would quietly become a no-op.
+   * `transform` creates no backdrop root, so it is the safe promotion.
+   */
+  transform: translateZ(0);
 }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; height: 66px; }
 .nav-links { display: flex; align-items: center; gap: 26px; }
@@ -354,7 +470,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 3px; border-radius: 999px;
   background: rgba(22, 22, 26, 0.045);
   border: 1px solid rgba(22, 22, 26, 0.07);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  /* Standard only — see the note on .nav about the -webkit- alias being kept
+     at the expense of the standard property. */
+  backdrop-filter: blur(12px);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 1px 3px rgba(22,22,26,.05);
 }
 .lang-thumb {
@@ -408,5 +526,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .footer { border-top: 1px solid var(--rule); padding-block: 52px 64px; color: var(--muted); font-size: 13.5px; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* The blanket rule above collapses the animation but leaves the pending state
+     painted, so say outright that revealed content is visible and unmoved.
+     Nothing here may hide content — a motion preference is not a request to
+     read less. */
+  [data-reveal='pending'], [data-reveal='in'] {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    animation: none !important;
+  }
+  .btn-primary::after { animation: none; opacity: 0; }
+  .card-lift:hover { transform: none; }
+  .btn:not(:disabled):hover { transform: none; }
 }

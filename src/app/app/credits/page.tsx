@@ -33,10 +33,14 @@ export default async function Credits() {
       <h1 className="title" style={{ marginBottom: 4 }}>{t.app.credits.title}</h1>
       <p className="small measure" style={{ marginBottom: 30 }}>{t.app.credits.lede}</p>
 
-      <div className="grid g3" style={{ marginBottom: 32 }}>
+      <div className="grid g4" style={{ marginBottom: 32 }}>
         <div className="card">
           <div className="stat-value">{credits.unlimited ? '∞' : credits.balance}</div>
           <div className="stat-label" style={{ marginTop: 8 }}>{t.app.credits.balance}</div>
+        </div>
+        <div className="card">
+          <div className="stat-value">{credits.freeRemaining ? t.app.credits.freeAvailable : t.app.credits.freeUsed}</div>
+          <div className="stat-label" style={{ marginTop: 8 }}>{t.app.credits.freeMonthly}</div>
         </div>
         <div className="card">
           <div className="stat-value">{credits.spent}</div>

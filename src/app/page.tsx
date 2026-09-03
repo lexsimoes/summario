@@ -197,7 +197,7 @@ export default async function Home() {
           <h2 className="title measure">{t.pricing.title}</h2>
           <p className="lede measure" style={{ marginTop: 16 }}>{t.pricing.lede}</p>
 
-          <Reveal className="grid g3" style={{ marginTop: 44, alignItems: 'stretch' }}>
+          <Reveal className="grid g2" style={{ marginTop: 44, alignItems: 'stretch' }}>
             {t.pricing.packs.map((p) => (
               <div
                 key={p.n}
@@ -219,7 +219,7 @@ export default async function Home() {
                   <p className="small" style={{ margin: '6px 0 0' }}>{p.c}</p>
                 </div>
                 <p className="small" style={{ margin: 0, flex: 1 }}>{p.d}</p>
-                <button className="btn btn-ghost btn-block" disabled>{t.app.credits.buy}</button>
+                <button className="btn btn-ghost btn-block" disabled>{p.action}</button>
               </div>
             ))}
           </Reveal>

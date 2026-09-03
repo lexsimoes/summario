@@ -1,5 +1,7 @@
 import { recordAudit } from './audit'
-import { addLedgerEntry, getMaterial, ledgerTotals, type UserRow } from './db'
+import {
+  addLedgerEntry, getMaterial, hasMonthlyFreeGuide, ledgerTotals, releaseMonthlyFreeGuide, type UserRow,
+} from './db'
 import type { DocumentType } from './types'
 
 /**
@@ -19,11 +21,16 @@ export interface CreditState {
   spent: number
   granted: number
   unlimited: boolean
+  freeRemaining: number
 }
 
 export function creditState(user: UserRow): CreditState {
   const totals = ledgerTotals(user.id)
-  return { ...totals, unlimited: user.plan === 'owner' }
+  return {
+    ...totals,
+    unlimited: user.plan === 'owner',
+    freeRemaining: hasMonthlyFreeGuide(user.id) ? 1 : 0,
+  }
 }
 
 export function canAfford(user: UserRow, cost: number) {
@@ -43,6 +50,11 @@ export function chargeCredits(user: UserRow, materialId: string, cost: number) {
 export function refundCredits(userId: string, materialId: string) {
   const material = getMaterial(materialId)
   if (!material) return
+  if (material.credits_cost === 0) {
+    releaseMonthlyFreeGuide(userId, materialId)
+    recordAudit({ event: 'refund_free_guide', userId, detail: materialId })
+    return
+  }
   addLedgerEntry({
     userId,
     delta: material.credits_cost,

@@ -39,7 +39,7 @@ export async function runPipeline(
   let request = req
   if (req.sourceKind === 'web') {
     say('researching', 'searching for authoritative sources')
-    const research = await researchTopic({ topic: req.topic, description: req.description })
+    const research = await researchTopic({ topic: req.topic, description: req.description, model: req.model })
     request = { ...req, sourceText: research.text, sources: research.sources }
     say('researching', `${research.sources.length} sources across ${research.searches} searches`)
   }

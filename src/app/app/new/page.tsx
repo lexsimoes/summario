@@ -22,6 +22,7 @@ export default async function NewDocument() {
           languages={t.languages}
           cost={COST.pocket_guide}
           balance={credits.unlimited ? Number.POSITIVE_INFINITY : credits.balance}
+          freeRemaining={credits.freeRemaining}
         />
       </div>
     </div>

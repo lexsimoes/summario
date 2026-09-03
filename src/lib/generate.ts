@@ -50,7 +50,7 @@ function briefing(req: GenerationRequest) {
  */
 export async function planDocument(req: GenerationRequest): Promise<{ plan: Plan; usage: GeneratedPart['inputTokens'] }> {
   const res = await call({
-    model: config.models.planner,
+    model: req.model ?? config.models.planner,
     system: stableSystem(taskFileFor(req.documentType)),
     maxTokens: 3000,
     content: [
@@ -126,7 +126,7 @@ export async function generatePart(
   ].join('\n')
 
   const res = await call({
-    model: config.models.guide,
+    model: req.model ?? config.models.guide,
     system: stableSystem(taskFileFor(req.documentType)),
     content: [
       { type: 'text', text: sourceBlock(req), cache_control: { type: 'ephemeral' } },

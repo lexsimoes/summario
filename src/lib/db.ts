@@ -127,6 +127,16 @@ CREATE TABLE IF NOT EXISTS credit_ledger (
 );
 CREATE INDEX IF NOT EXISTS ledger_by_user ON credit_ledger(user_id, id DESC);
 
+-- The free allowance is an entitlement, not a credit: it renews every UTC month
+-- and never mixes with purchased credits, which remain non-expiring.
+CREATE TABLE IF NOT EXISTS free_guide_usage (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  period TEXT NOT NULL,
+  material_id TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, period)
+);
+
 CREATE TABLE IF NOT EXISTS flashcards (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   material_id TEXT NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
@@ -209,7 +219,7 @@ CREATE TABLE IF NOT EXISTS invites (
   token_hash TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL DEFAULT '',
   note TEXT NOT NULL DEFAULT '',
-  credits INTEGER NOT NULL DEFAULT 4,
+  credits INTEGER NOT NULL DEFAULT 0,
   created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   expires_at TEXT NOT NULL,
@@ -509,6 +519,25 @@ export function ledgerTotals(userId: string) {
     )
     .get(userId) as { balance: number; spent: number; granted: number }
   return row
+}
+
+const utcMonth = () => new Date().toISOString().slice(0, 7)
+
+export function hasMonthlyFreeGuide(userId: string) {
+  return !getDb()
+    .prepare('SELECT 1 FROM free_guide_usage WHERE user_id = ? AND period = ?')
+    .get(userId, utcMonth())
+}
+
+/** Atomic because the primary key permits only one reservation per user/month. */
+export function claimMonthlyFreeGuide(userId: string, materialId: string) {
+  return getDb()
+    .prepare('INSERT OR IGNORE INTO free_guide_usage (user_id, period, material_id) VALUES (?, ?, ?)')
+    .run(userId, utcMonth(), materialId).changes === 1
+}
+
+export function releaseMonthlyFreeGuide(userId: string, materialId: string) {
+  getDb().prepare('DELETE FROM free_guide_usage WHERE user_id = ? AND material_id = ?').run(userId, materialId)
 }
 
 /* ------------------------------------------------------------------- jobs */

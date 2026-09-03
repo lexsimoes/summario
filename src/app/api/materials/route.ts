@@ -4,8 +4,10 @@ import path from 'node:path'
 import { requireUserApi } from '@/lib/api-auth'
 import { recordAudit } from '@/lib/audit'
 import { clientIp } from '@/lib/rate-limit'
-import { createMaterial, listMaterials } from '@/lib/db'
-import { canAfford, chargeCredits, COST } from '@/lib/credits'
+import {
+  claimMonthlyFreeGuide, createMaterial, ledgerTotals, listMaterials, releaseMonthlyFreeGuide,
+} from '@/lib/db'
+import { chargeCredits, COST } from '@/lib/credits'
 import { config } from '@/lib/config'
 import { cleanExtract, pdfToTextCached, sectionsFromScope, sliceSections } from '@/lib/extract'
 import { enqueueJob } from '@/lib/jobs'
@@ -29,6 +31,7 @@ export async function POST(req: Request) {
   const user = await requireUserApi()
   if (user instanceof NextResponse) return user
 
+  let freeReservation: { userId: string; materialId: string } | null = null
   try {
     const form = await req.formData()
     const topic = String(form.get('topic') ?? '').trim()
@@ -48,11 +51,7 @@ export async function POST(req: Request) {
     // Exam reviews (Type B) still exist in the pipeline and the CLI; the web form
     // only offers the pocket guide, which is the shape almost every request has.
     const documentType: DocumentType = 'pocket_guide'
-    const cost = COST[documentType]
-
-    if (!canAfford(user, cost)) {
-      return NextResponse.json({ error: 'insufficient_credits' }, { status: 402 })
-    }
+    const creditCost = COST[documentType]
 
     // Extraction is pure code and fast enough to run inline; web research is not,
     // so it happens inside the job where the reader can watch the stage change.
@@ -83,28 +82,43 @@ export async function POST(req: Request) {
     const slug = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     const id = `${user.id.slice(0, 8)}-${slug}-${language}-${TYPE_SUFFIX[documentType]}`
 
+    // Credits buy the complete Opus guide and are used before the monthly free
+    // allowance. With no balance, reserve the single Sonnet PDF atomically.
+    const paid = user.plan === 'owner' || ledgerTotals(user.id).balance >= creditCost
+    const cost = paid ? creditCost : 0
+    if (!paid) {
+      if (!claimMonthlyFreeGuide(user.id, id)) {
+        return NextResponse.json({ error: 'free_guide_used' }, { status: 402 })
+      }
+      freeReservation = { userId: user.id, materialId: id }
+    }
+
     const theme = themeFor(topic)
 
     createMaterial({
       id, userId: user.id, topic, description, language, documentType, theme,
       sourceKind, sourceFileRef: pdfPath, creditsCost: cost,
     })
-    chargeCredits(user, id, cost)
+    if (paid) chargeCredits(user, id, cost)
     enqueueJob({
       kind: 'generate',
       materialId: id,
       userId: user.id,
-      payload: { topic, description, language, documentType, theme, sourceKind, sourceText },
+      payload: {
+        topic, description, language, documentType, theme, sourceKind, sourceText,
+        model: paid ? config.models.guide : config.models.freeGuide,
+      },
     })
     recordAudit({
       event: 'generate',
       userId: user.id,
       ip: clientIp(req),
-      detail: `${id} · ${sourceKind} · ${cost} credit(s)`,
+      detail: `${id} · ${sourceKind} · ${paid ? `${cost} credit(s) · Opus` : 'monthly free · Sonnet'}`,
     })
 
     return NextResponse.json({ id, sectionMatched, sourceKind, cost })
   } catch (err) {
+    if (freeReservation) releaseMonthlyFreeGuide(freeReservation.userId, freeReservation.materialId)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : String(err) },
       { status: 500 },

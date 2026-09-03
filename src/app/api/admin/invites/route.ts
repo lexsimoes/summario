@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_email' }, { status: 400 })
   }
 
-  const credits = Math.round(Number(body.credits ?? 4))
+  const credits = Math.round(Number(body.credits ?? 0))
   if (!Number.isFinite(credits) || credits < MIN_INVITE_CREDITS || credits > MAX_INVITE_CREDITS) {
     return NextResponse.json({ error: 'invalid_credits' }, { status: 400 })
   }

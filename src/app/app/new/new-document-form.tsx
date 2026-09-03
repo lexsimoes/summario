@@ -10,15 +10,17 @@ interface Props {
   languages: Dict['languages']
   cost: number
   balance: number
+  freeRemaining: number
 }
 
-export function NewDocumentForm({ t, types, languages, cost, balance }: Props) {
+export function NewDocumentForm({ t, types, languages, cost, balance, freeRemaining }: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [source, setSource] = useState<SourceKind>('upload')
 
-  const affordable = balance >= cost
+  const paid = balance >= cost
+  const affordable = paid || freeRemaining > 0
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -27,7 +29,9 @@ export function NewDocumentForm({ t, types, languages, cost, balance }: Props) {
     try {
       const res = await fetch('/api/materials', { method: 'POST', body: new FormData(e.currentTarget) })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error === 'insufficient_credits' ? t.insufficient : data.error)
+      if (!res.ok) throw new Error(
+        data.error === 'insufficient_credits' || data.error === 'free_guide_used' ? t.insufficient : data.error,
+      )
       router.push(`/app/documents/${data.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -108,7 +112,9 @@ export function NewDocumentForm({ t, types, languages, cost, balance }: Props) {
         <div>
           <div className="stat-label">{t.cost}</div>
           <div className="row" style={{ gap: 8, marginTop: 4 }}>
-            <strong style={{ fontSize: 17 }}>{cost} {cost === 1 ? t.credit : t.creditsPl}</strong>
+            <strong style={{ fontSize: 17 }}>
+              {paid ? `${cost} ${cost === 1 ? t.credit : t.creditsPl}` : t.freeIncluded}
+            </strong>
             <span className="pill">{types.pocket_guide}</span>
           </div>
         </div>

@@ -20,7 +20,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <div className="row" style={{ gap: 18 }}>
             <Brand href="/app" />
             <span className="pill pill-accent" style={{ letterSpacing: '.04em' }}>
-              {credits.unlimited ? t.app.credits.unlimited : `${credits.balance} ${credits.balance === 1 ? t.app.create.credit : t.app.create.creditsPl}`}
+              {credits.unlimited
+                ? t.app.credits.unlimited
+                : credits.balance > 0
+                  ? `${credits.balance} ${credits.balance === 1 ? t.app.create.credit : t.app.create.creditsPl}`
+                  : `${t.app.credits.freeMonthly}: ${credits.freeRemaining ? t.app.credits.freeAvailable : t.app.credits.freeUsed}`}
             </span>
           </div>
           <div className="row" style={{ gap: 14 }}>

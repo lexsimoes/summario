@@ -10,19 +10,24 @@ the model actually reads; `docs/MASTER_BLUEPRINT.md` is the human-readable
 version of the same thing.
 
 ## Decisions in force
-- **Model: Opus 5 for the guide.** Single user for now, and the guide is the
-  quality lever — everything downstream is derived from it. Cheaper tiers to be
-  compared later, by hand. `ESTUDO_MODEL_PLANNER` stays empty on purpose: the
-  prompt cache is per-model, so a different planner forces a second cache write
-  of the whole extract and costs more than the tier saves.
+- **Two product routes, with quality preserved.** With purchased credits, Opus 5
+  plans and writes the complete guide and unlocks its Sonnet-generated study
+  set. With no balance, every member gets one Sonnet 5 PDF per UTC month, with
+  no derivatives. Purchased credits are consumed before the free allowance and
+  never expire. A failed free job restores the month's entitlement just as a
+  failed paid job refunds its credit. `ESTUDO_MODEL_PLANNER` remains the paid
+  default; a per-request model pins every free planning/writing/research call to
+  Sonnet so a free job cannot drift back to Opus.
 - **No assistant prefill.** Current models reject it outright. The parsers in
   `src/lib/generate.ts` are tolerant instead.
 - **Domain profiles are opt-in.** `prompts/blueprint.md` holds only universal
   format rules; field-specific content (analogy registry, badges) lives in
   `prompts/profiles/<name>.md` and loads only when `ESTUDO_PROFILE` is set.
 - **Credits are charged at job start and refunded on failure.** The ledger is
-  append-only; balance is `SUM(delta)`. The study set is the exception: it is
-  derived from a guide already paid for and costs nothing.
+  append-only; balance is `SUM(delta)`. Monthly free usage lives separately in
+  `free_guide_usage`, because an expiring entitlement must not contaminate the
+  non-expiring credit ledger. Study sets cost nothing but are available only on
+  credit-backed guides.
 - **Access is invite-only; there is no self-signup.** The owner creates
   single-use invite links from `/app/admin`, and only the token's SHA-256 is
   stored. Disabling an account is reversible and checked on every request, not

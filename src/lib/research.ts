@@ -31,6 +31,7 @@ export async function researchTopic(opts: {
   topic: string
   description: string
   maxSearches?: number
+  model?: string
 }): Promise<Research> {
   const instruction = [
     `Research this topic and produce the raw source material a study-guide generator will use as its ONLY source.`,
@@ -61,7 +62,7 @@ export async function researchTopic(opts: {
     .join('\n')
 
   const res = await anthropic().messages.create({
-    model: config.models.guide,
+    model: opts.model ?? config.models.guide,
     max_tokens: 8000,
     tools: [
       {

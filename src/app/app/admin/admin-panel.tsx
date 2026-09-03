@@ -156,7 +156,7 @@ export function AdminPanel({
             </div>
             <div className="field">
               <label className="label" htmlFor="credits">{a.inviteCredits}</label>
-              <input className="input" id="credits" name="credits" type="number" min={0} max={500} defaultValue={4} required />
+              <input className="input" id="credits" name="credits" type="number" min={0} max={500} defaultValue={0} required />
             </div>
           </div>
           <div className="field">

@@ -8,6 +8,8 @@ export const config = {
   models: {
     /** Judgement and creation: the guide defines the quality of everything downstream. */
     get guide() { return env('ESTUDO_MODEL_GUIDE', 'claude-opus-5') },
+    /** The monthly free PDF keeps quality high without paying the Opus premium. */
+    get freeGuide() { return env('ESTUDO_MODEL_FREE_GUIDE', 'claude-sonnet-5') },
     /**
      * Defaults to the guide model on purpose. Outlining is structured enough for
      * a cheaper tier, but the prompt cache is per-model: pointing the planner at

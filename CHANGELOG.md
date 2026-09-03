@@ -6,6 +6,25 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### One useful free guide every month; one paid offer
+The commercial surface is now deliberately small: Free includes one PDF guide
+per UTC month, planned and written with Claude Sonnet 5; Plus is four complete
+Opus 5 guides for USD 9, including the quiz, flashcards, project briefs and Anki
+export. Additional Plus credits can be bought in the same four-credit pack and
+never expire. Checkout is still visibly marked as coming soon rather than
+pretending a disabled button can take payment.
+
+The free allowance is not an expiring ledger credit. It has its own one-row-per-
+month reservation, claimed atomically when a job is submitted and released if
+the job fails. Purchased credits take priority, so someone who bought Plus gets
+the complete Opus experience rather than silently spending their monthly free
+PDF first. Free materials are rejected by the study-set API as well as hidden in
+the interface; this is an entitlement boundary, not merely marketing copy.
+
+New invites default to zero credits. An owner can still attach any grant to an
+invite, but a normal invited account now enters the permanent Free plan instead
+of accidentally receiving the old four-credit trial.
+
 ### Motion and depth, and a frosted nav that had quietly stopped frosting
 The site had colour and type but no behaviour: nothing moved, nothing responded,
 and depth came from three stacked shadows that read as blur rather than light.

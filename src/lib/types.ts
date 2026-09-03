@@ -26,6 +26,8 @@ export interface GenerationRequest {
   /** Plain text: extracted from the uploaded PDF, or researched from the web. */
   sourceText: string
   sourceKind: SourceKind
+  /** Per-request routing: free PDFs use Sonnet; credit-backed guides use Opus. */
+  model?: string
   /** Set when sourceKind is 'web' — disclosed on the cover and checked for. */
   sources?: Source[]
   /** Optional question bank or answer key, plain text. */

@@ -17,9 +17,9 @@ export default async function Overview() {
 
   const tiles = [
     { label: t.app.overview.balance, value: credits.unlimited ? '∞' : String(credits.balance) },
+    { label: t.app.credits.freeMonthly, value: credits.freeRemaining ? t.app.credits.freeAvailable : t.app.credits.freeUsed },
     { label: t.app.overview.used, value: String(credits.spent) },
     { label: t.app.overview.docs, value: String(stats.docs) },
-    { label: t.app.overview.pages, value: String(stats.pages) },
   ]
 
   return (

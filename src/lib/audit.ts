@@ -19,6 +19,7 @@ export type AuditEvent =
   | 'generate'
   | 'derive'
   | 'refund'
+  | 'refund_free_guide'
   | 'grant'
   | 'login_blocked'
   | 'invite_created'

@@ -499,6 +499,13 @@ Two consequences that are not optional:
 **Principle:** strong model where there is judgement and creation; cheap model where there
 is mechanical transformation. This routing decision is itself a core AI-engineering skill.
 
+**[v1.3 commercial routing]** The product now has two deliberately narrow paths. Free is one
+PDF per UTC month, planned and written with Sonnet 5, with no derivative study set. Plus is
+four non-expiring credits for USD 9; each credit buys an Opus 5 guide and unlocks the Sonnet
+study set. Paid credits are consumed before the monthly allowance. This keeps the free output
+genuinely useful without spending the frontier-model premium, while the paid product preserves
+the strongest model at every editorial decision point.
+
 ### 7.2 Cost estimation (order of magnitude — verify current pricing)
 
 Per chapter, roughly:
@@ -599,8 +606,9 @@ one worker in one process — what changed is that the queue outlives the proces
 
 **[v1.2]** Phases 2 and 3 shipped together as one **study set**, generated on demand from a
 finished guide rather than automatically: most guides are read before they are drilled, and
-paying for cards nobody asked for is waste. It costs no credit — the derivative tier is cheap
-enough that metering it would cost more in hesitation than in tokens.
+paying for cards nobody asked for is waste. It costs no additional credit on a Plus guide —
+the derivative tier is cheap enough that metering it would cost more in hesitation than in
+tokens. Free PDFs do not include a study set.
 
 Two corrections to the plan above, both learned in the building:
 

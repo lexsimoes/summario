@@ -67,8 +67,8 @@ npm run dev                 # http://localhost:3000
 ```
 
 `npm run seed` also generates `SESSION_SECRET` into `.env` if it is missing, and
-grants the account its welcome credits. Re-running it resets that account's
-password. `pdftotext` must be on PATH: `brew install poppler` on macOS,
+grants a newly seeded owner its administrative credits. Re-running it resets that
+account's password. `pdftotext` must be on PATH: `brew install poppler` on macOS,
 `apt-get install poppler-utils` on Debian.
 
 ## The site
@@ -95,10 +95,16 @@ object.
 
 ## Credits
 
-One credit is one pocket guide; an exam review costs two. `credit_ledger` is
-append-only and the balance is `SUM(delta)` — never a mutable column, so the
-history and the number on screen cannot disagree. Credits are charged when a job
-starts and refunded automatically if it fails.
+Every member has one free Sonnet 5 PDF per UTC month. Its reservation lives in
+`free_guide_usage`, outside the ledger, and is restored automatically if the job
+fails. It has no derived study set.
+
+Plus costs USD 9 for four non-expiring credits. One credit is one complete Opus 5
+pocket guide with its on-demand Sonnet study set; an exam review costs two.
+Purchased credits take priority over the monthly free allowance.
+`credit_ledger` is append-only and the balance is `SUM(delta)` — never a mutable
+column, so the history and the number on screen cannot disagree. Credits are
+charged when a job starts and refunded automatically if it fails.
 
 An account with `plan = 'owner'` is never blocked by balance, but consumption is
 still metered, so the owner's dashboard shows exactly what a paying user's
@@ -222,8 +228,9 @@ script).
   fit for the render step — Railway, Fly, or any container is safer.
 - **Scanned PDFs produce an empty extract.** OCR them first; the API refuses
   anything under 500 characters rather than generating from nothing.
-- **Credit purchase is not wired.** The packs on the homepage and the button in
-  `/app/credits` are deliberately inert until there is a checkout behind them.
+- **Credit purchase is not wired.** The single Plus pack (four credits for USD 9)
+  and the button in `/app/credits` are deliberately inert until a payment provider
+  and checkout credentials are chosen.
 - **Model ids and prices drift.** `npm run models` asks the API instead of
   trusting a hardcoded list.
 

@@ -22,6 +22,7 @@ export const maxDuration = 60
 const TYPE_SUFFIX: Record<DocumentType, string> = { pocket_guide: 'pg', exam_review: 'rev' }
 const SANDBOX_MODELS = new Set([
   'claude-opus-5',
+  'gemini-2.5-flash-lite',
   'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
   'gpt-4o-mini',

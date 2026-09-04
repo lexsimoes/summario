@@ -14,18 +14,24 @@ zero.
 
 ## Candidate order
 
-1. `gemini-3.8-flash` — current GA cost/performance candidate. Introductory paid
+1. `gemini-2.5-flash-lite` — stable legacy value baseline at USD 0.10/MTok
+   input and USD 0.40/MTok output.
+2. `gemini-3.8-flash` — current GA cost/performance candidate. Introductory paid
    price through 2026: USD 0.75/MTok input and USD 3.75/MTok output.
-2. `gemini-3.5-flash-lite` — current economical Gemini floor at USD 0.30/MTok
+3. `gemini-3.5-flash-lite` — current economical Gemini floor at USD 0.30/MTok
    input and USD 2.50/MTok output.
-3. `gpt-5.4-mini` — current explicitly Mini-labelled OpenAI value model at USD
+4. `gpt-5.4-mini` — current explicitly Mini-labelled OpenAI value model at USD
    0.75/MTok input and USD 4.50/MTok output.
-4. `gpt-5.6-terra` — the stronger current OpenAI tier corresponding roughly to
+5. `gpt-5.6-terra` — the stronger current OpenAI tier corresponding roughly to
    Mini in the new family. USD 2/MTok input and USD 12/MTok output.
-5. `gpt-4o-mini` remains selectable as a legacy cost reference, not as the
+6. `gpt-4o-mini` remains selectable as a legacy cost reference, not as the
    presumed production winner.
-6. Gemini Pro / GPT-5.6 Sol — quality challengers if no value candidate
+7. Gemini Pro / GPT-5.6 Sol — quality challengers if no value candidate
    gets close enough to the Opus control.
+
+`gemini-2.0-flash-lite` remains visible in the selector for historical context,
+but disabled: Google shut the API model down on 2026-06-01, so it cannot produce
+a comparison run anymore.
 
 Model IDs and prices are observations, not durable configuration. Verify both
 against the provider documentation immediately before each run.

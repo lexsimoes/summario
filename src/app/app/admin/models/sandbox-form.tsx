@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 
 const MODELS = [
+  { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite — descontinuado', note: 'API desligada em 1º de junho de 2026', disabled: true },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite', note: 'legado econômico: USD 0,10 entrada / USD 0,40 saída por MTok' },
   { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', note: 'mais barato do Gemini atual' },
   { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', note: 'melhor custo-benefício promocional' },
   { value: 'gpt-4o-mini', label: 'GPT-4o mini', note: 'referência legada barata' },
@@ -17,7 +19,7 @@ export function SandboxForm() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [prompt, setPrompt] = useState('')
   const [file, setFile] = useState<File | null>(null)
-  const [model, setModel] = useState(MODELS[1].value as string)
+  const [model, setModel] = useState('gemini-3.8-flash')
   const [language, setLanguage] = useState('bilingual')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -51,7 +53,9 @@ export function SandboxForm() {
     <form onSubmit={submit}>
       <div className="row" style={{ gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <select className="select" value={model} onChange={(e) => setModel(e.target.value)} style={{ flex: '1 1 260px' }}>
-          {MODELS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          {MODELS.map((item) => (
+            <option key={item.value} value={item.value} disabled={'disabled' in item && item.disabled}>{item.label}</option>
+          ))}
         </select>
         <select className="select" value={language} onChange={(e) => setLanguage(e.target.value)} style={{ flex: '0 1 190px' }}>
           <option value="bilingual">Bilíngue</option>

@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 
+const MAX_PDF_BYTES = 25 * 1024 * 1024
+
 const MODELS = [
   { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite — descontinuado', note: 'API desligada em 1º de junho de 2026', disabled: true },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite', note: 'legado econômico: USD 0,10 entrada / USD 0,40 saída por MTok' },
@@ -27,6 +29,10 @@ export function SandboxForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!prompt.trim()) return
+    if (file && file.size > MAX_PDF_BYTES) {
+      setError('O PDF deve ter no máximo 25 MB.')
+      return
+    }
     setBusy(true)
     setError('')
     const data = new FormData()
@@ -39,7 +45,14 @@ export function SandboxForm() {
     try {
       const res = await fetch('/api/materials', { method: 'POST', body: data })
       const body = await res.json()
-      if (!res.ok) throw new Error(body.error || 'Não foi possível iniciar a geração.')
+      if (!res.ok) {
+        const message = body.error === 'pdf_too_large'
+          ? 'O PDF deve ter no máximo 25 MB.'
+          : body.error === 'invalid_form_data'
+            ? 'Não foi possível ler o envio. Selecione o PDF novamente e tente outra vez.'
+            : body.error || 'Não foi possível iniciar a geração.'
+        throw new Error(message)
+      }
       router.push(`/app/documents/${body.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -83,7 +96,17 @@ export function SandboxForm() {
               type="file"
               accept="application/pdf"
               hidden
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const selected = e.target.files?.[0] ?? null
+                if (selected && selected.size > MAX_PDF_BYTES) {
+                  setFile(null)
+                  setError('O PDF deve ter no máximo 25 MB.')
+                  e.target.value = ''
+                  return
+                }
+                setError('')
+                setFile(selected)
+              }}
             />
             <button className="btn btn-quiet btn-sm" type="button" onClick={() => fileRef.current?.click()}>
               {file ? 'Trocar PDF' : 'Anexar PDF'}

@@ -32,6 +32,10 @@ const nextConfig = {
   experimental: {
     // Generation jobs write to the data directory at runtime.
     serverActions: { bodySizeLimit: '25mb' },
+    // Middleware clones request bodies. Its 10 MB default truncates larger PDF
+    // multipart uploads, leaving Route Handler formData() with an invalid body.
+    // Keep a little room above the 25 MB file limit for multipart metadata.
+    middlewareClientMaxBodySize: '26mb',
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]

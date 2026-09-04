@@ -20,6 +20,7 @@ export const maxDuration = 60
 // Part of the material id, so a document stays addressable if exam reviews come
 // back to the form later.
 const TYPE_SUFFIX: Record<DocumentType, string> = { pocket_guide: 'pg', exam_review: 'rev' }
+const MAX_PDF_BYTES = 25 * 1024 * 1024
 const SANDBOX_MODELS = new Set([
   'claude-opus-5',
   'gemini-2.5-flash-lite',
@@ -42,7 +43,12 @@ export async function POST(req: Request) {
 
   let freeReservation: { userId: string; materialId: string } | null = null
   try {
-    const form = await req.formData()
+    let form: FormData
+    try {
+      form = await req.formData()
+    } catch {
+      return NextResponse.json({ error: 'invalid_form_data' }, { status: 400 })
+    }
     const topic = String(form.get('topic') ?? '').trim()
     const description = String(form.get('description') ?? '').trim()
     const language = String(form.get('language') ?? 'bilingual') as LanguageMode
@@ -60,6 +66,12 @@ export async function POST(req: Request) {
     if (!topic) return NextResponse.json({ error: 'topic_required' }, { status: 400 })
 
     const hasUpload = pdf instanceof File && pdf.size > 0
+    if (hasUpload && pdf.size > MAX_PDF_BYTES) {
+      return NextResponse.json({ error: 'pdf_too_large' }, { status: 413 })
+    }
+    if (hasUpload && pdf.type && pdf.type !== 'application/pdf') {
+      return NextResponse.json({ error: 'invalid_pdf' }, { status: 400 })
+    }
     const sourceKind: SourceKind = hasUpload ? 'upload' : 'web'
 
     // Exam reviews (Type B) still exist in the pipeline and the CLI; the web form

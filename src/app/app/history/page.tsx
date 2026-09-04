@@ -43,6 +43,7 @@ export default async function History() {
                   <td>
                     <Link href={`/app/documents/${m.id}`} style={{ fontWeight: 600 }}>{m.topic}</Link>
                     {m.description && <div className="tiny">{m.description}</div>}
+                    {m.model && <div className="tiny">{m.model}</div>}
                   </td>
                   <td className="small">{t.types[m.document_type]}</td>
                   <td className="small">{t.languages[m.language]}</td>

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import fs from 'node:fs'
 import path from 'node:path'
 import { config, assertApiKey } from './config'
+import { callGoogle } from './google'
 
 let client: Anthropic | null = null
 export function anthropic() {
@@ -60,6 +61,14 @@ export async function call(opts: {
   content: Block[]
   maxTokens?: number
 }): Promise<CallResult> {
+  if (opts.model.startsWith('gemini-')) {
+    return callGoogle({
+      model: opts.model,
+      system: opts.system.map((b) => b.text).join('\n\n'),
+      content: opts.content.map((b) => b.text).join('\n\n'),
+      maxTokens: opts.maxTokens ?? config.maxOutputTokens,
+    })
+  }
   // No assistant prefill here on purpose: it is the obvious way to stop a model
   // wrapping its answer in preamble, and the current models reject it outright
   // ("does not support assistant message prefill"). The parsers below are

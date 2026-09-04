@@ -61,7 +61,9 @@ export default async function Overview() {
                 <tr key={m.id}>
                   <td>
                     <Link href={`/app/documents/${m.id}`} style={{ fontWeight: 600 }}>{m.topic}</Link>
-                    <div className="tiny">{t.types[m.document_type]} · {t.languages[m.language]}</div>
+                    <div className="tiny">
+                      {t.types[m.document_type]} · {t.languages[m.language]}{m.model ? ` · ${m.model}` : ''}
+                    </div>
                   </td>
                   <td style={{ width: 150 }}><StatusPill status={m.status} t={t} /></td>
                   <td className="num tiny" style={{ width: 90 }}>{fmt.format(new Date(m.created_at + 'Z'))}</td>

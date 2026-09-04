@@ -20,6 +20,7 @@ export const maxDuration = 60
 // Part of the material id, so a document stays addressable if exam reviews come
 // back to the form later.
 const TYPE_SUFFIX: Record<DocumentType, string> = { pocket_guide: 'pg', exam_review: 'rev' }
+const SANDBOX_MODELS = new Set(['claude-opus-5', 'gemini-3.8-flash'])
 
 export async function GET() {
   const user = await requireUserApi()
@@ -37,7 +38,12 @@ export async function POST(req: Request) {
     const topic = String(form.get('topic') ?? '').trim()
     const description = String(form.get('description') ?? '').trim()
     const language = String(form.get('language') ?? 'bilingual') as LanguageMode
+    const requestedModel = String(form.get('sandboxModel') ?? '').trim()
     const pdf = form.get('pdf')
+
+    if (requestedModel && (user.plan !== 'owner' || !SANDBOX_MODELS.has(requestedModel))) {
+      return NextResponse.json({ error: 'invalid_model' }, { status: 400 })
+    }
 
     // The section range is read out of the scope the user already wrote rather
     // than asked for again in its own fields.
@@ -47,6 +53,9 @@ export async function POST(req: Request) {
 
     const hasUpload = pdf instanceof File && pdf.size > 0
     const sourceKind: SourceKind = hasUpload ? 'upload' : 'web'
+    if (requestedModel && sourceKind === 'web') {
+      return NextResponse.json({ error: 'sandbox_upload_only' }, { status: 400 })
+    }
 
     // Exam reviews (Type B) still exist in the pipeline and the CLI; the web form
     // only offers the pocket guide, which is the shape almost every request has.
@@ -80,11 +89,13 @@ export async function POST(req: Request) {
     // insert throws instead of updating. It stays deterministic, so regenerating
     // a document keeps its URL and its folder on disk.
     const slug = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const id = `${user.id.slice(0, 8)}-${slug}-${language}-${TYPE_SUFFIX[documentType]}`
+    const paid = user.plan === 'owner' || ledgerTotals(user.id).balance >= creditCost
+    const model = requestedModel || (paid ? config.models.guide : config.models.freeGuide)
+    const modelSuffix = requestedModel ? `-${requestedModel.replace(/[^a-z0-9]+/g, '-')}` : ''
+    const id = `${user.id.slice(0, 8)}-${slug}-${language}-${TYPE_SUFFIX[documentType]}${modelSuffix}`
 
     // Credits buy the complete Opus guide and are used before the monthly free
     // allowance. With no balance, reserve the single Sonnet PDF atomically.
-    const paid = user.plan === 'owner' || ledgerTotals(user.id).balance >= creditCost
     const cost = paid ? creditCost : 0
     if (!paid) {
       if (!claimMonthlyFreeGuide(user.id, id)) {
@@ -97,7 +108,7 @@ export async function POST(req: Request) {
 
     createMaterial({
       id, userId: user.id, topic, description, language, documentType, theme,
-      sourceKind, sourceFileRef: pdfPath, creditsCost: cost,
+      sourceKind, sourceFileRef: pdfPath, creditsCost: cost, model,
     })
     if (paid) chargeCredits(user, id, cost)
     enqueueJob({
@@ -106,14 +117,14 @@ export async function POST(req: Request) {
       userId: user.id,
       payload: {
         topic, description, language, documentType, theme, sourceKind, sourceText,
-        model: paid ? config.models.guide : config.models.freeGuide,
+        model,
       },
     })
     recordAudit({
       event: 'generate',
       userId: user.id,
       ip: clientIp(req),
-      detail: `${id} · ${sourceKind} · ${paid ? `${cost} credit(s) · Opus` : 'monthly free · Sonnet'}`,
+      detail: `${id} · ${sourceKind} · ${paid ? `${cost} credit(s) · ${model}` : 'monthly free · Sonnet'}`,
     })
 
     return NextResponse.json({ id, sectionMatched, sourceKind, cost })

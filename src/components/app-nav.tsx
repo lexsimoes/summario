@@ -13,6 +13,7 @@ const items = [
 /** Owner-only, matching the page's own check. */
 const ownerItems = [
   { href: '/app/admin', key: 'admin' },
+  { href: '/app/admin/models', key: 'models' },
   { href: '/app/audit', key: 'audit' },
 ] as const
 

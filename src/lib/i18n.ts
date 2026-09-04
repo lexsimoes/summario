@@ -182,7 +182,7 @@ const pt = {
     toLogin: 'Ir para a tela de entrada',
   },
   app: {
-    nav: { overview: 'Visão geral', create: 'Novo guia', history: 'Histórico', credits: 'Créditos', admin: 'Pessoas', audit: 'Auditoria', logout: 'Sair' },
+    nav: { overview: 'Visão geral', create: 'Novo guia', history: 'Histórico', credits: 'Créditos', admin: 'Pessoas', models: 'Laboratório', audit: 'Auditoria', logout: 'Sair' },
     greeting: 'Olá',
     admin: {
       title: 'Pessoas',
@@ -502,7 +502,7 @@ const en: Dict = {
     toLogin: 'Go to the sign-in page',
   },
   app: {
-    nav: { overview: 'Overview', create: 'New guide', history: 'History', credits: 'Credits', admin: 'People', audit: 'Audit', logout: 'Sign out' },
+    nav: { overview: 'Overview', create: 'New guide', history: 'History', credits: 'Credits', admin: 'People', models: 'Model lab', audit: 'Audit', logout: 'Sign out' },
     greeting: 'Hello',
     admin: {
       title: 'People',

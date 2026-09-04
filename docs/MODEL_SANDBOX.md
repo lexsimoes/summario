@@ -4,16 +4,21 @@ This branch exists to test cheaper providers without weakening the production
 route. Production remains Claude Sonnet 5 for the monthly free PDF and Claude
 Opus 5 for credit-backed complete guides.
 
+The owner-only UI lives at `/app/admin/models`. It intentionally accepts uploads
+only: web research is provider-specific and would confound the first comparison.
+Set `GOOGLE_API_KEY` on the sandbox deployment, use a separate data volume, and
+generate the same input once with Gemini and once with the Opus control.
+
 ## Candidate order
 
-1. `gemini-2.5-flash-lite` — cheapest credible baseline. Paid-tier list price:
-   USD 0.10/MTok input and USD 0.40/MTok output.
-2. `gpt-5.6-luna` — cheapest OpenAI baseline. USD 0.20/MTok input and USD
-   1.20/MTok output.
-3. Gemini Flash-class model — test only if Flash-Lite loses too much editorial
-   judgement; choose the current stable ID when the adapter is implemented.
-4. Gemini Pro / GPT-5.6 Terra — quality challengers if the inexpensive models
-   fail but still reveal that another provider can follow the blueprint.
+1. `gemini-3.8-flash` — current GA cost/performance candidate. Introductory paid
+   price through 2026: USD 0.75/MTok input and USD 3.75/MTok output.
+2. `gpt-5.6-terra` — the current OpenAI tier corresponding roughly to the old
+   Mini tier. USD 2/MTok input and USD 12/MTok output.
+3. `gpt-5.6-luna` — Nano-like floor, tested only to measure how much editorial
+   judgement is lost at USD 0.20/MTok input and USD 1.20/MTok output.
+4. Gemini Pro / GPT-5.6 Sol — quality challengers if neither value candidate
+   gets close enough to the Opus control.
 
 Model IDs and prices are observations, not durable configuration. Verify both
 against the provider documentation immediately before each run.

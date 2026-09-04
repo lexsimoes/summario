@@ -11,9 +11,13 @@ interface Props {
   cost: number
   balance: number
   freeRemaining: number
+  modelOptions?: { value: string; label: string }[]
+  uploadOnly?: boolean
 }
 
-export function NewDocumentForm({ t, types, languages, cost, balance, freeRemaining }: Props) {
+export function NewDocumentForm({
+  t, types, languages, cost, balance, freeRemaining, modelOptions, uploadOnly = false,
+}: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -46,6 +50,15 @@ export function NewDocumentForm({ t, types, languages, cost, balance, freeRemain
         <input className="input" id="topic" name="topic" required placeholder={t.topicPh} />
       </div>
 
+      {modelOptions?.length ? (
+        <div className="field">
+          <label className="label" htmlFor="sandboxModel">Modelo</label>
+          <select className="select" id="sandboxModel" name="sandboxModel" defaultValue={modelOptions[0].value}>
+            {modelOptions.map((model) => <option key={model.value} value={model.value}>{model.label}</option>)}
+          </select>
+        </div>
+      ) : null}
+
       <div className="field">
         <label className="label" htmlFor="description">{t.scope}</label>
         <textarea className="textarea" id="description" name="description" placeholder={t.scopePh} />
@@ -63,7 +76,7 @@ export function NewDocumentForm({ t, types, languages, cost, balance, freeRemain
 
       {/* Source is a real fork in how the document is built, so it is a choice
           you make, not a file field you happen to leave empty. */}
-      <fieldset className="field" style={{ border: 0, padding: 0, margin: '26px 0 0' }}>
+      {!uploadOnly && <fieldset className="field" style={{ border: 0, padding: 0, margin: '26px 0 0' }}>
         <legend className="label" style={{ padding: 0 }}>{t.source}</legend>
 
         <div className="grid g2" style={{ gap: 12 }}>
@@ -97,9 +110,9 @@ export function NewDocumentForm({ t, types, languages, cost, balance, freeRemain
             </label>
           ))}
         </div>
-      </fieldset>
+      </fieldset>}
 
-      {source === 'upload' && (
+      {(uploadOnly || source === 'upload') && (
         <div className="field" style={{ marginTop: 18 }}>
           <label className="label" htmlFor="pdf">{t.pdf}</label>
           <input className="file" id="pdf" name="pdf" type="file" accept="application/pdf" required />

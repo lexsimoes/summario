@@ -23,6 +23,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
       <h1 className="title" style={{ margin: '14px 0 6px' }}>{m.topic}</h1>
       <p className="small" style={{ marginBottom: 30 }}>
         {t.types[m.document_type]} · {t.languages[m.language]}
+        {m.model ? ` · ${m.model}` : ''}
         {m.description ? ` · ${m.description}` : ''}
       </p>
 

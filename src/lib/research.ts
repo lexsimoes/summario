@@ -39,7 +39,7 @@ export async function researchTopic(opts: {
     `Research this topic and produce the raw source material a study-guide generator will use as its ONLY source.`,
     '',
     `TOPIC: ${opts.topic}`,
-    opts.description ? `SCOPE: ${opts.description}` : '',
+    opts.description ? `FOCUS: ${opts.description}` : '',
     '',
     'Search for authoritative sources — textbooks, university course pages, standards bodies,',
     'primary documentation, peer-reviewed material. Prefer them over blog posts and content farms.',

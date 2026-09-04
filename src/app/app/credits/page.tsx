@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/auth'
-import { creditState } from '@/lib/credits'
+import { creditState, FREE_MONTHLY_GUIDES } from '@/lib/credits'
 import { listLedger, getMaterial } from '@/lib/db'
 import { tr, type Dict } from '@/lib/i18n'
 
@@ -39,7 +39,7 @@ export default async function Credits() {
           <div className="stat-label" style={{ marginTop: 8 }}>{t.app.credits.balance}</div>
         </div>
         <div className="card">
-          <div className="stat-value">{credits.freeRemaining ? t.app.credits.freeAvailable : t.app.credits.freeUsed}</div>
+          <div className="stat-value">{credits.freeRemaining}/{FREE_MONTHLY_GUIDES}</div>
           <div className="stat-label" style={{ marginTop: 8 }}>{t.app.credits.freeMonthly}</div>
         </div>
         <div className="card">

@@ -22,7 +22,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params
   const m = getMaterial(id)
   if (!m || m.user_id !== user.id) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  if (m.credits_cost === 0 || m.sandbox) return NextResponse.json({ error: 'plus_required' }, { status: 403 })
+  if (m.sandbox) return NextResponse.json({ error: 'sandbox_guide_only' }, { status: 403 })
 
   const weak = new Set(quizWeakConcepts(id, user.id))
 
@@ -63,7 +63,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params
   const m = getMaterial(id)
   if (!m || m.user_id !== user.id) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  if (m.credits_cost === 0 || m.sandbox) return NextResponse.json({ error: 'plus_required' }, { status: 403 })
+  if (m.sandbox) return NextResponse.json({ error: 'sandbox_guide_only' }, { status: 403 })
   if (m.status !== 'done') return NextResponse.json({ error: 'guide_not_ready' }, { status: 409 })
   if (m.derivatives_status === 'generating') {
     return NextResponse.json({ ok: true, status: 'generating' })

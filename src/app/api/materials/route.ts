@@ -7,7 +7,7 @@ import { clientIp } from '@/lib/rate-limit'
 import {
   claimMonthlyFreeGuide, createMaterial, ledgerTotals, listMaterials, releaseMonthlyFreeGuide,
 } from '@/lib/db'
-import { chargeCredits, COST } from '@/lib/credits'
+import { chargeCredits, COST, FREE_MONTHLY_GUIDES } from '@/lib/credits'
 import { config } from '@/lib/config'
 import { cleanExtract, pdfToTextCached, sectionsFromScope, sliceSections } from '@/lib/extract'
 import { enqueueJob } from '@/lib/jobs'
@@ -78,6 +78,13 @@ export async function POST(req: Request) {
     // only offers the pocket guide, which is the shape almost every request has.
     const documentType: DocumentType = 'pocket_guide'
     const creditCost = COST[documentType]
+    const paid = user.plan === 'owner' || ledgerTotals(user.id).balance >= creditCost
+
+    // PDF ingestion is a Plus feature. Enforce it here as well as in the form so
+    // a crafted request cannot spend the Free plan's much larger input budget.
+    if (hasUpload && !paid) {
+      return NextResponse.json({ error: 'pdf_plus_required' }, { status: 403 })
+    }
 
     // Extraction is pure code and fast enough to run inline; web research is not,
     // so it happens inside the job where the reader can watch the stage change.
@@ -106,16 +113,19 @@ export async function POST(req: Request) {
     // insert throws instead of updating. It stays deterministic, so regenerating
     // a document keeps its URL and its folder on disk.
     const slug = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const paid = user.plan === 'owner' || ledgerTotals(user.id).balance >= creditCost
-    const model = requestedModel || (paid ? config.models.guide : config.models.freeGuide)
+    const model = requestedModel || (
+      paid
+        ? sourceKind === 'upload' ? config.models.paidUploadGuide : config.models.paidWebGuide
+        : config.models.freeGuide
+    )
     const modelSuffix = requestedModel ? `-${requestedModel.replace(/[^a-z0-9]+/g, '-')}` : ''
     const id = `${user.id.slice(0, 8)}-${slug}-${language}-${TYPE_SUFFIX[documentType]}${modelSuffix}`
 
-    // Credits buy the complete Opus guide and are used before the monthly free
-    // allowance. With no balance, reserve the single Sonnet PDF atomically.
+    // Purchased generations are used first. With no balance, reserve one of the
+    // five monthly web-guide slots atomically.
     const cost = paid ? creditCost : 0
     if (!paid) {
-      if (!claimMonthlyFreeGuide(user.id, id)) {
+      if (!claimMonthlyFreeGuide(user.id, id, FREE_MONTHLY_GUIDES)) {
         return NextResponse.json({ error: 'free_guide_used' }, { status: 402 })
       }
       freeReservation = { userId: user.id, materialId: id }
@@ -141,7 +151,7 @@ export async function POST(req: Request) {
       event: 'generate',
       userId: user.id,
       ip: clientIp(req),
-      detail: `${id} · ${sourceKind} · ${paid ? `${cost} credit(s) · ${model}` : 'monthly free · Sonnet'}`,
+      detail: `${id} · ${sourceKind} · ${paid ? `${cost} credit(s)` : 'monthly free'} · ${model}`,
     })
 
     return NextResponse.json({ id, sectionMatched, sourceKind, cost })

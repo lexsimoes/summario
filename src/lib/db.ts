@@ -80,6 +80,27 @@ function migrate(db: Database.Database) {
   if (!quizColumns.has('concept')) {
     db.exec("ALTER TABLE quiz_questions ADD COLUMN concept TEXT DEFAULT ''")
   }
+
+  // The first Free plan allowed one guide per month and encoded that limit in
+  // the primary key. Rebuild once so each generation gets its own usage row;
+  // the application can now enforce a configurable monthly allowance.
+  const freeUsageColumns = db.prepare('PRAGMA table_info(free_guide_usage)').all() as { name: string }[]
+  if (!freeUsageColumns.some((c) => c.name === 'id')) {
+    db.exec(`
+      CREATE TABLE free_guide_usage_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        period TEXT NOT NULL,
+        material_id TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO free_guide_usage_new (user_id, period, material_id, created_at)
+        SELECT user_id, period, material_id, created_at FROM free_guide_usage;
+      DROP TABLE free_guide_usage;
+      ALTER TABLE free_guide_usage_new RENAME TO free_guide_usage;
+      CREATE INDEX free_usage_by_user_period ON free_guide_usage(user_id, period);
+    `)
+  }
 }
 
 const SCHEMA = `
@@ -148,12 +169,13 @@ CREATE INDEX IF NOT EXISTS ledger_by_user ON credit_ledger(user_id, id DESC);
 -- The free allowance is an entitlement, not a credit: it renews every UTC month
 -- and never mixes with purchased credits, which remain non-expiring.
 CREATE TABLE IF NOT EXISTS free_guide_usage (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   period TEXT NOT NULL,
   material_id TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  PRIMARY KEY (user_id, period)
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS free_usage_by_user_period ON free_guide_usage(user_id, period);
 
 CREATE TABLE IF NOT EXISTS flashcards (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -547,21 +569,30 @@ export function ledgerTotals(userId: string) {
 
 const utcMonth = () => new Date().toISOString().slice(0, 7)
 
-export function hasMonthlyFreeGuide(userId: string) {
-  return !getDb()
-    .prepare('SELECT 1 FROM free_guide_usage WHERE user_id = ? AND period = ?')
-    .get(userId, utcMonth())
+export function monthlyFreeGuidesUsed(userId: string) {
+  const row = getDb()
+    .prepare('SELECT COUNT(*) AS used FROM free_guide_usage WHERE user_id = ? AND period = ?')
+    .get(userId, utcMonth()) as { used: number }
+  return row.used
 }
 
-/** Atomic because the primary key permits only one reservation per user/month. */
-export function claimMonthlyFreeGuide(userId: string, materialId: string) {
-  return getDb()
-    .prepare('INSERT OR IGNORE INTO free_guide_usage (user_id, period, material_id) VALUES (?, ?, ?)')
-    .run(userId, utcMonth(), materialId).changes === 1
+/** Count and reservation share one immediate SQLite transaction. */
+export function claimMonthlyFreeGuide(userId: string, materialId: string, limit: number) {
+  return getDb().transaction(() => {
+    if (monthlyFreeGuidesUsed(userId) >= limit) return false
+    getDb()
+      .prepare('INSERT INTO free_guide_usage (user_id, period, material_id) VALUES (?, ?, ?)')
+      .run(userId, utcMonth(), materialId)
+    return true
+  }).immediate()
 }
 
 export function releaseMonthlyFreeGuide(userId: string, materialId: string) {
-  getDb().prepare('DELETE FROM free_guide_usage WHERE user_id = ? AND material_id = ?').run(userId, materialId)
+  getDb().prepare(
+    `DELETE FROM free_guide_usage WHERE id = (
+       SELECT id FROM free_guide_usage WHERE user_id = ? AND material_id = ? ORDER BY id DESC LIMIT 1
+     )`,
+  ).run(userId, materialId)
 }
 
 /* ------------------------------------------------------------------- jobs */

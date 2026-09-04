@@ -95,13 +95,14 @@ object.
 
 ## Credits
 
-Every member has one free Sonnet 5 PDF per UTC month. Its reservation lives in
-`free_guide_usage`, outside the ledger, and is restored automatically if the job
-fails. It has no derived study set.
+Every member has five web-researched guides per UTC month. Their reservations
+live in `free_guide_usage`, outside the ledger, and are restored automatically
+if a job fails. PDF upload is blocked for Free; every finished guide can create
+its quiz, flashcards, project briefs and Anki export.
 
-Plus costs USD 9 for four non-expiring credits. One credit is one complete Opus 5
-pocket guide with its on-demand Sonnet study set; an exam review costs two.
-Purchased credits take priority over the monthly free allowance.
+Plus costs USD 9 for 30 non-expiring generations. One credit is one complete
+pocket guide, from web research or a supporting PDF, and an exam review costs
+two. Purchased credits take priority over the monthly free allowance.
 `credit_ledger` is append-only and the balance is `SUM(delta)` — never a mutable
 column, so the history and the number on screen cannot disagree. Credits are
 charged when a job starts and refunded automatically if it fails.
@@ -165,7 +166,8 @@ weak, and the deck reorders to put those cards first.
 
 Derivatives read the **guide's HTML**, never the original PDF — roughly 70% fewer
 tokens, and it keeps the cards consistent with the document the reader actually
-has. One call on `ESTUDO_MODEL_DERIVATIVE`.
+has. Free study sets use `ESTUDO_MODEL_FREE_DERIVATIVE`; Plus study sets use
+`ESTUDO_MODEL_PAID_DERIVATIVE`.
 
 ## The quality checks
 
@@ -228,7 +230,7 @@ script).
   fit for the render step — Railway, Fly, or any container is safer.
 - **Scanned PDFs produce an empty extract.** OCR them first; the API refuses
   anything under 500 characters rather than generating from nothing.
-- **Credit purchase is not wired.** The single Plus pack (four credits for USD 9)
+- **Credit purchase is not wired.** The single Plus pack (30 generations for USD 9)
   and the button in `/app/credits` are deliberately inert until a payment provider
   and checkout credentials are chosen.
 - **Model ids and prices drift.** `npm run models` asks the API instead of

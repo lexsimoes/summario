@@ -11,9 +11,8 @@ import type { StudySet } from './types'
  * ~70% token saving the blueprint calls for, and it keeps the derivatives
  * consistent with what the reader actually has in front of them.
  *
- * One call on the derivative tier (Sonnet). The blueprint's routing would put
- * flashcards on the cheap tier and only the quiz on Sonnet; splitting the call
- * is a later lever, not worth the second guide-sized cache write today.
+ * One call keeps the set coherent and avoids writing the guide-sized context a
+ * second time. Free guides use GPT-4o mini; Plus guides use Gemini Flash.
  */
 function languageNote(m: MaterialRow): string {
   if (m.language === 'pt') {
@@ -32,7 +31,7 @@ export async function deriveStudySet(
   if (!m.html) throw new Error('Cannot derive a study set: the guide has no HTML.')
 
   const res = await call({
-    model: config.models.derivative,
+    model: m.credits_cost > 0 ? config.models.paidDerivative : config.models.freeDerivative,
     system: [{ type: 'text', text: loadPrompt('task-study-set.md') }],
     content: [
       { type: 'text', text: `=== POCKET GUIDE (HTML) ===\n${m.html}`, cache_control: { type: 'ephemeral' } },
@@ -40,7 +39,7 @@ export async function deriveStudySet(
         type: 'text',
         text: [
           `TOPIC: ${m.topic}`,
-          m.description ? `SCOPE: ${m.description}` : '',
+          m.description ? `FOCUS: ${m.description}` : '',
           `LANGUAGE: ${languageNote(m)}`,
           '',
           'Produce the study set as JSON per the task spec above. Reply with the JSON object and nothing else.',

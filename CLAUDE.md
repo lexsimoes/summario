@@ -10,14 +10,13 @@ the model actually reads; `docs/MASTER_BLUEPRINT.md` is the human-readable
 version of the same thing.
 
 ## Decisions in force
-- **Two product routes, with quality preserved.** With purchased credits, Opus 5
-  plans and writes the complete guide and unlocks its Sonnet-generated study
-  set. With no balance, every member gets one Sonnet 5 PDF per UTC month, with
-  no derivatives. Purchased credits are consumed before the free allowance and
-  never expire. A failed free job restores the month's entitlement just as a
-  failed paid job refunds its credit. `ESTUDO_MODEL_PLANNER` remains the paid
-  default; a per-request model pins every free planning/writing/research call to
-  Sonnet so a free job cannot drift back to Opus.
+- **Two product routes, with source-aware model routing.** Free members get five
+  web-researched guides per UTC month and cannot upload PDFs. Those guides use
+  Gemini 3.8 Flash; their quiz, flashcards and project briefs use GPT-4o mini.
+  A Plus pack is 30 non-expiring generations: uploaded PDFs use Gemini 3.8
+  Flash, web research uses GPT-5.6 Terra, and study sets use Gemini 3.8 Flash.
+  Purchased generations are consumed before the free allowance. A failed free
+  job restores its slot just as a failed paid job refunds its credit.
 - **No assistant prefill.** Current models reject it outright. The parsers in
   `src/lib/generate.ts` are tolerant instead.
 - **Domain profiles are opt-in.** `prompts/blueprint.md` holds only universal
@@ -26,8 +25,8 @@ version of the same thing.
 - **Credits are charged at job start and refunded on failure.** The ledger is
   append-only; balance is `SUM(delta)`. Monthly free usage lives separately in
   `free_guide_usage`, because an expiring entitlement must not contaminate the
-  non-expiring credit ledger. Study sets cost nothing but are available only on
-  credit-backed guides.
+  non-expiring credit ledger. Study sets cost nothing and are available on every
+  non-sandbox guide.
 - **Access is invite-only; there is no self-signup.** The owner creates
   single-use invite links from `/app/admin`, and only the token's SHA-256 is
   stored. Disabling an account is reversible and checked on every request, not

@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/auth'
-import { creditState, COST } from '@/lib/credits'
+import { creditState, COST, FREE_MONTHLY_GUIDES } from '@/lib/credits'
 import { tr } from '@/lib/i18n'
 import { NewDocumentForm } from './new-document-form'
 
@@ -23,6 +23,8 @@ export default async function NewDocument() {
           cost={COST.pocket_guide}
           balance={credits.unlimited ? Number.POSITIVE_INFINITY : credits.balance}
           freeRemaining={credits.freeRemaining}
+          freeLimit={FREE_MONTHLY_GUIDES}
+          isPlus={credits.unlimited || credits.balance > 0}
         />
       </div>
     </div>

@@ -6,20 +6,17 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
-### One useful free guide every month; one paid offer
-The commercial surface is now deliberately small: Free includes one PDF guide
-per UTC month, planned and written with Claude Sonnet 5; Plus is four complete
-Opus 5 guides for USD 9, including the quiz, flashcards, project briefs and Anki
-export. Additional Plus credits can be bought in the same four-credit pack and
-never expire. Checkout is still visibly marked as coming soon rather than
-pretending a disabled button can take payment.
+### Five useful Free guides and a 30-generation Plus pack
+Free now includes five web-researched guides per UTC month, including the quiz,
+flashcards, project briefs and Anki export. PDF upload is blocked in both the
+form and the API for Free accounts. Plus is USD 9 for 30 non-expiring
+generations and accepts either a topic or a supporting PDF.
 
-The free allowance is not an expiring ledger credit. It has its own one-row-per-
-month reservation, claimed atomically when a job is submitted and released if
-the job fails. Purchased credits take priority, so someone who bought Plus gets
-the complete Opus experience rather than silently spending their monthly free
-PDF first. Free materials are rejected by the study-set API as well as hidden in
-the interface; this is an entitlement boundary, not merely marketing copy.
+Routing follows the work instead of applying one premium model everywhere.
+Free guides and Plus PDF guides use Gemini 3.8 Flash; Plus web research uses
+GPT-5.6 Terra. Free study sets use GPT-4o mini and Plus study sets use Gemini
+3.8 Flash. The monthly Free reservation table now records individual uses and
+still releases the latest reservation when generation fails.
 
 New invites default to zero credits. An owner can still attach any grant to an
 invite, but a normal invited account now enters the permanent Free plan instead

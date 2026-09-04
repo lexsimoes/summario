@@ -34,7 +34,7 @@ function briefing(req: GenerationRequest) {
 
   return [
     `TOPIC: ${req.topic}`,
-    `SCOPE: ${req.description}`,
+    `FOCUS: ${req.description}`,
     provenance,
     `DOCUMENT TYPE: ${req.documentType === 'exam_review' ? 'Type B — exam review' : 'Type A — pocket guide'}`,
     `LANGUAGE MODE: ${modeNote}`,

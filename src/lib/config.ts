@@ -8,10 +8,14 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   // Read lazily, so `npm run generate -- --model X` can override at runtime.
   models: {
-    /** Judgement and creation: the guide defines the quality of everything downstream. */
-    get guide() { return env('ESTUDO_MODEL_GUIDE', 'claude-opus-5') },
-    /** The monthly free PDF keeps quality high without paying the Opus premium. */
-    get freeGuide() { return env('ESTUDO_MODEL_FREE_GUIDE', 'claude-sonnet-5') },
+    /** Default for CLI runs and paid guides researched from the web. */
+    get guide() { return env('ESTUDO_MODEL_GUIDE', 'gpt-5.6-terra') },
+    /** Free guides are web-only and use the strongest cost-efficient Flash tier. */
+    get freeGuide() { return env('ESTUDO_MODEL_FREE_GUIDE', 'gemini-3.8-flash') },
+    /** Paid PDF guides do not need a separate web-research model. */
+    get paidUploadGuide() { return env('ESTUDO_MODEL_PAID_UPLOAD_GUIDE', 'gemini-3.8-flash') },
+    /** Paid web guides get the deeper research tier. */
+    get paidWebGuide() { return env('ESTUDO_MODEL_PAID_WEB_GUIDE', 'gpt-5.6-terra') },
     /**
      * Defaults to the guide model on purpose. Outlining is structured enough for
      * a cheaper tier, but the prompt cache is per-model: pointing the planner at
@@ -20,10 +24,10 @@ export const config = {
      * small enough that the duplicated write does not matter.
      */
     get planner() { return env('ESTUDO_MODEL_PLANNER', this.guide) },
-    /** Derivatives that still need judgement (quiz distractors). */
-    get derivative() { return env('ESTUDO_MODEL_DERIVATIVE', 'claude-sonnet-5') },
-    /** Mechanical transformation (flashcards, cheat sheet). */
-    get cheap() { return env('ESTUDO_MODEL_CHEAP', 'claude-haiku-4-5-20251001') },
+    /** Free study sets stay inexpensive without losing structured-output quality. */
+    get freeDerivative() { return env('ESTUDO_MODEL_FREE_DERIVATIVE', 'gpt-4o-mini') },
+    /** Plus study sets use the same Flash tier as PDF-backed guides. */
+    get paidDerivative() { return env('ESTUDO_MODEL_PAID_DERIVATIVE', 'gemini-3.8-flash') },
   },
   /**
    * Optional domain profile from prompts/profiles/. Carries the analogy

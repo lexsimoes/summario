@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { requireUser } from '@/lib/auth'
-import { creditState } from '@/lib/credits'
+import { creditState, FREE_MONTHLY_GUIDES } from '@/lib/credits'
 import { tr } from '@/lib/i18n'
 import { Brand } from '@/components/brand'
 import { LangToggle } from '@/components/lang-toggle'
@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 ? t.app.credits.unlimited
                 : credits.balance > 0
                   ? `${credits.balance} ${credits.balance === 1 ? t.app.create.credit : t.app.create.creditsPl}`
-                  : `${t.app.credits.freeMonthly}: ${credits.freeRemaining ? t.app.credits.freeAvailable : t.app.credits.freeUsed}`}
+                  : `${t.app.credits.freeMonthly}: ${credits.freeRemaining}/${FREE_MONTHLY_GUIDES}`}
             </span>
           </div>
           <div className="row" style={{ gap: 14 }}>

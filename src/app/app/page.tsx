@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
-import { creditState } from '@/lib/credits'
+import { creditState, FREE_MONTHLY_GUIDES } from '@/lib/credits'
 import { listMaterials, materialStats } from '@/lib/db'
 import { tr } from '@/lib/i18n'
 import { StatusPill } from '@/components/status-pill'
@@ -17,7 +17,7 @@ export default async function Overview() {
 
   const tiles = [
     { label: t.app.overview.balance, value: credits.unlimited ? '∞' : String(credits.balance) },
-    { label: t.app.credits.freeMonthly, value: credits.freeRemaining ? t.app.credits.freeAvailable : t.app.credits.freeUsed },
+    { label: t.app.credits.freeMonthly, value: `${credits.freeRemaining}/${FREE_MONTHLY_GUIDES}` },
     { label: t.app.overview.used, value: String(credits.spent) },
     { label: t.app.overview.docs, value: String(stats.docs) },
   ]

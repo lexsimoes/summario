@@ -11,17 +11,19 @@ interface Props {
   cost: number
   balance: number
   freeRemaining: number
+  freeLimit: number
+  isPlus: boolean
   modelOptions?: { value: string; label: string }[]
   uploadOnly?: boolean
 }
 
 export function NewDocumentForm({
-  t, types, languages, cost, balance, freeRemaining, modelOptions, uploadOnly = false,
+  t, types, languages, cost, balance, freeRemaining, freeLimit, isPlus, modelOptions, uploadOnly = false,
 }: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [source, setSource] = useState<SourceKind>('upload')
+  const [source, setSource] = useState<SourceKind>(isPlus ? 'upload' : 'web')
 
   const paid = balance >= cost
   const affordable = paid || freeRemaining > 0
@@ -34,7 +36,9 @@ export function NewDocumentForm({
       const res = await fetch('/api/materials', { method: 'POST', body: new FormData(e.currentTarget) })
       const data = await res.json()
       if (!res.ok) throw new Error(
-        data.error === 'insufficient_credits' || data.error === 'free_guide_used' ? t.insufficient : data.error,
+        data.error === 'insufficient_credits' || data.error === 'free_guide_used'
+          ? t.insufficient
+          : data.error === 'pdf_plus_required' ? t.pdfPlusOnly : data.error,
       )
       router.push(`/app/documents/${data.id}`)
     } catch (err) {
@@ -81,7 +85,7 @@ export function NewDocumentForm({
 
         <div className="grid g2" style={{ gap: 12 }}>
           {([
-            { key: 'upload' as const, name: t.sourceUpload, hint: t.sourceUploadHint },
+            ...(isPlus ? [{ key: 'upload' as const, name: t.sourceUpload, hint: t.sourceUploadHint }] : []),
             { key: 'web' as const, name: t.sourceWeb, hint: t.sourceWebHint },
           ]).map((opt) => (
             <label
@@ -112,7 +116,7 @@ export function NewDocumentForm({
         </div>
       </fieldset>}
 
-      {(uploadOnly || source === 'upload') && (
+      {(uploadOnly || (isPlus && source === 'upload')) && (
         <div className="field" style={{ marginTop: 18 }}>
           <label className="label" htmlFor="pdf">{t.pdf}</label>
           <input className="file" id="pdf" name="pdf" type="file" accept="application/pdf" required />
@@ -126,7 +130,9 @@ export function NewDocumentForm({
           <div className="stat-label">{t.cost}</div>
           <div className="row" style={{ gap: 8, marginTop: 4 }}>
             <strong style={{ fontSize: 17 }}>
-              {paid ? `${cost} ${cost === 1 ? t.credit : t.creditsPl}` : t.freeIncluded}
+              {paid
+                ? `${cost} ${cost === 1 ? t.credit : t.creditsPl}`
+                : t.freeIncluded.replace('{n}', String(freeRemaining)).replace('{total}', String(freeLimit))}
             </strong>
             <span className="pill">{types.pocket_guide}</span>
           </div>

@@ -61,7 +61,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
           }}
         />
 
-        {m.status === 'done' && m.credits_cost > 0 && !m.sandbox && (
+        {m.status === 'done' && !m.sandbox && (
           <StudySet id={id} guideHref={`/api/materials/${id}/html`} t={t.app.material.study} />
         )}
       </div>

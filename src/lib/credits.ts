@@ -1,6 +1,6 @@
 import { recordAudit } from './audit'
 import {
-  addLedgerEntry, getMaterial, hasMonthlyFreeGuide, ledgerTotals, releaseMonthlyFreeGuide, type UserRow,
+  addLedgerEntry, getMaterial, ledgerTotals, monthlyFreeGuidesUsed, releaseMonthlyFreeGuide, type UserRow,
 } from './db'
 import type { DocumentType } from './types'
 
@@ -15,6 +15,8 @@ export const COST: Record<DocumentType, number> = {
 }
 
 export const SIGNUP_GRANT = 4
+export const FREE_MONTHLY_GUIDES = 5
+export const PLUS_GUIDES = 30
 
 export interface CreditState {
   balance: number
@@ -29,7 +31,7 @@ export function creditState(user: UserRow): CreditState {
   return {
     ...totals,
     unlimited: user.plan === 'owner',
-    freeRemaining: hasMonthlyFreeGuide(user.id) ? 1 : 0,
+    freeRemaining: Math.max(0, FREE_MONTHLY_GUIDES - monthlyFreeGuidesUsed(user.id)),
   }
 }
 

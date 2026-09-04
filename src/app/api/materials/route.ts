@@ -20,7 +20,14 @@ export const maxDuration = 60
 // Part of the material id, so a document stays addressable if exam reviews come
 // back to the form later.
 const TYPE_SUFFIX: Record<DocumentType, string> = { pocket_guide: 'pg', exam_review: 'rev' }
-const SANDBOX_MODELS = new Set(['claude-opus-5', 'gemini-3.8-flash'])
+const SANDBOX_MODELS = new Set([
+  'claude-opus-5',
+  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash',
+  'gpt-4o-mini',
+  'gpt-5.4-mini',
+  'gpt-5.6-terra',
+])
 
 export async function GET() {
   const user = await requireUserApi()
@@ -53,9 +60,6 @@ export async function POST(req: Request) {
 
     const hasUpload = pdf instanceof File && pdf.size > 0
     const sourceKind: SourceKind = hasUpload ? 'upload' : 'web'
-    if (requestedModel && sourceKind === 'web') {
-      return NextResponse.json({ error: 'sandbox_upload_only' }, { status: 400 })
-    }
 
     // Exam reviews (Type B) still exist in the pipeline and the CLI; the web form
     // only offers the pocket guide, which is the shape almost every request has.
@@ -108,7 +112,7 @@ export async function POST(req: Request) {
 
     createMaterial({
       id, userId: user.id, topic, description, language, documentType, theme,
-      sourceKind, sourceFileRef: pdfPath, creditsCost: cost, model,
+      sourceKind, sourceFileRef: pdfPath, creditsCost: cost, model, sandbox: Boolean(requestedModel),
     })
     if (paid) chargeCredits(user, id, cost)
     enqueueJob({

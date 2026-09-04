@@ -47,6 +47,15 @@ function migrate(db: Database.Database) {
     db.exec('DROP INDEX IF EXISTS materials_identity')
     db.exec('CREATE UNIQUE INDEX materials_identity ON materials(user_id, topic, language, document_type, model)')
   }
+  if (!columns.has('api_cost_usd')) {
+    db.exec('ALTER TABLE materials ADD COLUMN api_cost_usd REAL')
+  }
+  if (!columns.has('searches')) {
+    db.exec('ALTER TABLE materials ADD COLUMN searches INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!columns.has('sandbox')) {
+    db.exec('ALTER TABLE materials ADD COLUMN sandbox INTEGER NOT NULL DEFAULT 0')
+  }
 
   // The derived study set (flashcards + quiz + project briefs) is generated on
   // demand from a finished guide, so a material tracks its own derivative state.
@@ -100,6 +109,9 @@ CREATE TABLE IF NOT EXISTS materials (
   sources TEXT,
   source_file_ref TEXT,
   model TEXT NOT NULL DEFAULT '',
+  api_cost_usd REAL,
+  searches INTEGER NOT NULL DEFAULT 0,
+  sandbox INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'pending',
   stage_detail TEXT DEFAULT '',
   error TEXT,
@@ -258,6 +270,9 @@ export interface MaterialRow {
   sources: string | null
   source_file_ref: string | null
   model: string
+  api_cost_usd: number | null
+  searches: number
+  sandbox: number
   status: Status
   stage_detail: string
   error: string | null
@@ -446,20 +461,22 @@ class InviteRaceLost extends Error {}
 export function createMaterial(m: {
   id: string; userId: string; topic: string; description: string; language: LanguageMode
   documentType: DocumentType; theme: Theme; sourceKind: SourceKind
-  sourceFileRef?: string; creditsCost: number; model?: string
+  sourceFileRef?: string; creditsCost: number; model?: string; sandbox?: boolean
 }) {
   getDb()
     .prepare(
-      `INSERT INTO materials (id, user_id, topic, description, language, document_type, theme, source_kind, source_file_ref, credits_cost, model)
-       VALUES (@id, @userId, @topic, @description, @language, @documentType, @theme, @sourceKind, @sourceFileRef, @creditsCost, @model)
+      `INSERT INTO materials (id, user_id, topic, description, language, document_type, theme, source_kind, source_file_ref, credits_cost, model, sandbox)
+       VALUES (@id, @userId, @topic, @description, @language, @documentType, @theme, @sourceKind, @sourceFileRef, @creditsCost, @model, @sandbox)
        ON CONFLICT(user_id, topic, language, document_type, model) DO UPDATE SET
          description = excluded.description, theme = excluded.theme,
          source_kind = excluded.source_kind, sources = NULL,
          source_file_ref = excluded.source_file_ref, credits_cost = excluded.credits_cost,
+         sandbox = excluded.sandbox,
          status = 'pending', error = NULL, stage_detail = '', validation = NULL,
+         api_cost_usd = NULL, searches = 0,
          updated_at = datetime('now')`,
     )
-    .run({ ...m, sourceFileRef: m.sourceFileRef ?? null, model: m.model ?? '' })
+    .run({ ...m, sourceFileRef: m.sourceFileRef ?? null, model: m.model ?? '', sandbox: m.sandbox ? 1 : 0 })
 }
 
 export function updateMaterial(id: string, patch: Partial<MaterialRow>) {

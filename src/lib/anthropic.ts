@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { config, assertApiKey } from './config'
 import { callGoogle } from './google'
+import { callOpenAI } from './openai'
 
 let client: Anthropic | null = null
 export function anthropic() {
@@ -63,6 +64,14 @@ export async function call(opts: {
 }): Promise<CallResult> {
   if (opts.model.startsWith('gemini-')) {
     return callGoogle({
+      model: opts.model,
+      system: opts.system.map((b) => b.text).join('\n\n'),
+      content: opts.content.map((b) => b.text).join('\n\n'),
+      maxTokens: opts.maxTokens ?? config.maxOutputTokens,
+    })
+  }
+  if (opts.model.startsWith('gpt-')) {
+    return callOpenAI({
       model: opts.model,
       system: opts.system.map((b) => b.text).join('\n\n'),
       content: opts.content.map((b) => b.text).join('\n\n'),

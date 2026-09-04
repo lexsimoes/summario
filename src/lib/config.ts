@@ -5,6 +5,7 @@ const env = (k: string, fallback: string) => process.env[k]?.trim() || fallback
 export const config = {
   apiKey: process.env.ANTHROPIC_API_KEY ?? '',
   googleApiKey: process.env.GOOGLE_API_KEY ?? '',
+  openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   // Read lazily, so `npm run generate -- --model X` can override at runtime.
   models: {
     /** Judgement and creation: the guide defines the quality of everything downstream. */

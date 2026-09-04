@@ -1,6 +1,8 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { anthropic } from './anthropic'
 import { config } from './config'
+import { researchWithGoogle } from './google'
+import { researchWithOpenAI } from './openai'
 import type { Source } from './types'
 
 /**
@@ -60,6 +62,27 @@ export async function researchTopic(opts: {
   ]
     .filter(Boolean)
     .join('\n')
+
+  if (opts.model?.startsWith('gemini-')) {
+    const result = await researchWithGoogle({ model: opts.model, instruction })
+    return {
+      text: result.text,
+      sources: result.sources,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      searches: result.searches,
+    }
+  }
+  if (opts.model?.startsWith('gpt-')) {
+    const result = await researchWithOpenAI({ model: opts.model, instruction })
+    return {
+      text: result.text,
+      sources: result.sources,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      searches: result.searches,
+    }
+  }
 
   const res = await anthropic().messages.create({
     model: opts.model ?? config.models.guide,

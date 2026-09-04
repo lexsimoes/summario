@@ -4,20 +4,27 @@ This branch exists to test cheaper providers without weakening the production
 route. Production remains Claude Sonnet 5 for the monthly free PDF and Claude
 Opus 5 for credit-backed complete guides.
 
-The owner-only UI lives at `/app/admin/models`. It intentionally accepts uploads
-only: web research is provider-specific and would confound the first comparison.
-Set `GOOGLE_API_KEY` on the sandbox deployment, use a separate data volume, and
-generate the same input once with Gemini and once with the Opus control.
+The owner-only UI lives at `/app/admin/models`. Its chat-like box accepts either
+a PDF plus a scope, or a topic that the selected provider researches on the web.
+Set `GOOGLE_API_KEY` and `OPENAI_API_KEY` on the sandbox deployment, use a
+separate data volume, and repeat the same input across models. The result page
+shows normalized token usage and an estimated token cost; tool-call charges are
+reported separately because provider allowances can make their marginal price
+zero.
 
 ## Candidate order
 
 1. `gemini-3.8-flash` — current GA cost/performance candidate. Introductory paid
    price through 2026: USD 0.75/MTok input and USD 3.75/MTok output.
-2. `gpt-5.6-terra` — the current OpenAI tier corresponding roughly to the old
-   Mini tier. USD 2/MTok input and USD 12/MTok output.
-3. `gpt-5.6-luna` — Nano-like floor, tested only to measure how much editorial
-   judgement is lost at USD 0.20/MTok input and USD 1.20/MTok output.
-4. Gemini Pro / GPT-5.6 Sol — quality challengers if neither value candidate
+2. `gemini-3.5-flash-lite` — current economical Gemini floor at USD 0.30/MTok
+   input and USD 2.50/MTok output.
+3. `gpt-5.4-mini` — current explicitly Mini-labelled OpenAI value model at USD
+   0.75/MTok input and USD 4.50/MTok output.
+4. `gpt-5.6-terra` — the stronger current OpenAI tier corresponding roughly to
+   Mini in the new family. USD 2/MTok input and USD 12/MTok output.
+5. `gpt-4o-mini` remains selectable as a legacy cost reference, not as the
+   presumed production winner.
+6. Gemini Pro / GPT-5.6 Sol — quality challengers if no value candidate
    gets close enough to the Opus control.
 
 Model IDs and prices are observations, not durable configuration. Verify both

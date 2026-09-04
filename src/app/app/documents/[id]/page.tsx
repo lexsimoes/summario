@@ -27,6 +27,20 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
         {m.description ? ` · ${m.description}` : ''}
       </p>
 
+      {m.api_cost_usd !== null && (
+        <div className="card" style={{ marginBottom: 22, paddingBlock: 16 }}>
+          <div className="row-between">
+            <span className="stat-label">Custo estimado da API</span>
+            <strong>USD {m.api_cost_usd.toFixed(4)}</strong>
+          </div>
+          {m.searches > 0 && (
+            <p className="tiny" style={{ margin: '7px 0 0' }}>
+              {m.searches} chamada(s) de pesquisa; eventual tarifa da ferramenta não incluída.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="stack-l">
         <DocumentStatus
           id={id}
@@ -47,7 +61,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
           }}
         />
 
-        {m.status === 'done' && m.credits_cost > 0 && (
+        {m.status === 'done' && m.credits_cost > 0 && !m.sandbox && (
           <StudySet id={id} guideHref={`/api/materials/${id}/html`} t={t.app.material.study} />
         )}
       </div>

@@ -1,7 +1,10 @@
 import { config } from './config'
 
 interface GoogleResponse {
-  candidates?: { content?: { parts?: { text?: string }[] } }[]
+  candidates?: {
+    content?: { parts?: { text?: string }[] }
+    groundingMetadata?: { groundingChunks?: { web?: { uri?: string; title?: string } }[] }
+  }[]
   usageMetadata?: {
     promptTokenCount?: number
     candidatesTokenCount?: number
@@ -11,11 +14,12 @@ interface GoogleResponse {
   error?: { message?: string }
 }
 
-export async function callGoogle(opts: {
+async function request(opts: {
   model: string
   system: string
   content: string
   maxTokens: number
+  search?: boolean
 }) {
   if (!config.googleApiKey) throw new Error('GOOGLE_API_KEY is not set')
 
@@ -31,6 +35,7 @@ export async function callGoogle(opts: {
           systemInstruction: { parts: [{ text: opts.system }] },
           contents: [{ role: 'user', parts: [{ text: opts.content }] }],
           generationConfig: { maxOutputTokens: opts.maxTokens },
+          ...(opts.search ? { tools: [{ googleSearch: {} }] } : {}),
         }),
         signal: controller.signal,
       },
@@ -41,8 +46,18 @@ export async function callGoogle(opts: {
     const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
     if (!text) throw new Error('Gemini API returned no text')
     const usage = body.usageMetadata ?? {}
+    const sources = new Map<string, { url: string; title: string }>()
+    for (const chunk of body.candidates?.[0]?.groundingMetadata?.groundingChunks ?? []) {
+      if (chunk.web?.uri) {
+        sources.set(chunk.web.uri, {
+          url: chunk.web.uri,
+          title: chunk.web.title || new URL(chunk.web.uri).hostname,
+        })
+      }
+    }
     return {
       text,
+      sources: [...sources.values()],
       inputTokens: usage.promptTokenCount ?? 0,
       outputTokens: (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0),
       cachedTokens: usage.cachedContentTokenCount ?? 0,
@@ -50,4 +65,18 @@ export async function callGoogle(opts: {
   } finally {
     clearTimeout(timeout)
   }
+}
+
+export const callGoogle = (opts: { model: string; system: string; content: string; maxTokens: number }) =>
+  request(opts)
+
+export async function researchWithGoogle(opts: { model: string; instruction: string }) {
+  const result = await request({
+    model: opts.model,
+    system: 'Research faithfully and return a dense source extract.',
+    content: opts.instruction,
+    maxTokens: 8000,
+    search: true,
+  })
+  return { ...result, searches: 1 }
 }

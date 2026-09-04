@@ -48,7 +48,10 @@ function briefing(req: GenerationRequest) {
  * units each holds. Generating against a plan is what keeps a 20-page document
  * from drifting, and it is what makes regenerating a single weak block possible.
  */
-export async function planDocument(req: GenerationRequest): Promise<{ plan: Plan; usage: GeneratedPart['inputTokens'] }> {
+export async function planDocument(req: GenerationRequest): Promise<{
+  plan: Plan
+  usage: { input: number; output: number; cached: number }
+}> {
   const res = await call({
     model: req.model ?? config.models.planner,
     system: stableSystem(taskFileFor(req.documentType)),
@@ -72,7 +75,10 @@ export async function planDocument(req: GenerationRequest): Promise<{ plan: Plan
   })
   const plan = parseJson<Plan>(res.text)
   if (!plan.parts?.length) throw new Error('Planner returned no parts')
-  return { plan, usage: res.inputTokens }
+  return {
+    plan,
+    usage: { input: res.inputTokens, output: res.outputTokens, cached: res.cachedTokens },
+  }
 }
 
 function sourceBlock(req: GenerationRequest) {

@@ -18,6 +18,7 @@ export interface PipelineResult {
   pageCount: number
   sources: Source[]
   usage: { input: number; output: number; cached: number }
+  searches: number
 }
 
 export type Progress = (stage: string, detail: string) => void
@@ -37,15 +38,19 @@ export async function runPipeline(
   // runs exactly as it does for an uploaded chapter. The fidelity rule is
   // unchanged — the generator still writes only from the extract it is given.
   let request = req
+  let researchUsage = { input: 0, output: 0, cached: 0 }
+  let searches = 0
   if (req.sourceKind === 'web') {
     say('researching', 'searching for authoritative sources')
     const research = await researchTopic({ topic: req.topic, description: req.description, model: req.model })
     request = { ...req, sourceText: research.text, sources: research.sources }
+    researchUsage = { input: research.inputTokens, output: research.outputTokens, cached: 0 }
+    searches = research.searches
     say('researching', `${research.sources.length} sources across ${research.searches} searches`)
   }
 
   say('planning', 'deciding the thematic blocks')
-  const { plan } = await planDocument(request)
+  const { plan, usage: planUsage } = await planDocument(request)
   say('planning', `${plan.parts.length} parts: ${plan.parts.map((p) => p.title).join(' | ')}`)
 
   const parts: GeneratedPart[] = []
@@ -91,10 +96,11 @@ export async function runPipeline(
     pageCount: pdfValidation.pages ?? 0,
     sources,
     usage: {
-      input: parts.reduce((n, p) => n + p.inputTokens, 0),
-      output: parts.reduce((n, p) => n + p.outputTokens, 0),
-      cached: parts.reduce((n, p) => n + p.cachedTokens, 0),
+      input: researchUsage.input + planUsage.input + parts.reduce((n, p) => n + p.inputTokens, 0),
+      output: researchUsage.output + planUsage.output + parts.reduce((n, p) => n + p.outputTokens, 0),
+      cached: researchUsage.cached + planUsage.cached + parts.reduce((n, p) => n + p.cachedTokens, 0),
     },
+    searches,
   }
 }
 

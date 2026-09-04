@@ -12,6 +12,7 @@ import {
 import { refundCredits } from './credits'
 import { deriveStudySet } from './derive'
 import { materialDir, runPipeline } from './pipeline'
+import { estimatedModelCost } from './model-pricing'
 import type { GenerationRequest, JobKind } from './types'
 
 /**
@@ -99,6 +100,7 @@ async function runGenerate(job: JobRow) {
     onProgress: (stage, detail) =>
       updateMaterial(job.material_id, { status: stage as never, stage_detail: detail }),
   })
+  const cost = estimatedModelCost(req.model ?? '', result.usage)
   updateMaterial(job.material_id, {
     status: 'done',
     stage_detail: '',
@@ -110,6 +112,8 @@ async function runGenerate(job: JobRow) {
     input_tokens: result.usage.input,
     output_tokens: result.usage.output,
     cached_tokens: result.usage.cached,
+    api_cost_usd: cost,
+    searches: result.searches,
   })
 }
 

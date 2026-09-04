@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 
-const MAX_PDF_BYTES = 25 * 1024 * 1024
+const MAX_PDF_BYTES = 100 * 1024 * 1024
 
 const MODELS = [
   { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite — descontinuado', note: 'API desligada em 1º de junho de 2026', disabled: true },
@@ -30,7 +30,7 @@ export function SandboxForm() {
     e.preventDefault()
     if (!prompt.trim()) return
     if (file && file.size > MAX_PDF_BYTES) {
-      setError('O PDF deve ter no máximo 25 MB.')
+      setError('O PDF deve ter no máximo 100 MB.')
       return
     }
     setBusy(true)
@@ -47,7 +47,7 @@ export function SandboxForm() {
       const body = await res.json()
       if (!res.ok) {
         const message = body.error === 'pdf_too_large'
-          ? 'O PDF deve ter no máximo 25 MB.'
+          ? 'O PDF deve ter no máximo 100 MB.'
           : body.error === 'invalid_form_data'
             ? 'Não foi possível ler o envio. Selecione o PDF novamente e tente outra vez.'
             : body.error || 'Não foi possível iniciar a geração.'
@@ -100,7 +100,7 @@ export function SandboxForm() {
                 const selected = e.target.files?.[0] ?? null
                 if (selected && selected.size > MAX_PDF_BYTES) {
                   setFile(null)
-                  setError('O PDF deve ter no máximo 25 MB.')
+                  setError('O PDF deve ter no máximo 100 MB.')
                   e.target.value = ''
                   return
                 }

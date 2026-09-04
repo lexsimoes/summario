@@ -20,7 +20,7 @@ export const maxDuration = 60
 // Part of the material id, so a document stays addressable if exam reviews come
 // back to the form later.
 const TYPE_SUFFIX: Record<DocumentType, string> = { pocket_guide: 'pg', exam_review: 'rev' }
-const MAX_PDF_BYTES = 25 * 1024 * 1024
+const MAX_PDF_BYTES = 100 * 1024 * 1024
 const SANDBOX_MODELS = new Set([
   'claude-opus-5',
   'gemini-2.5-flash-lite',

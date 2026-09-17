@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dict } from '@/lib/i18n'
 import type { DerivativesStatus, Status } from '@/lib/types'
 
@@ -27,9 +27,7 @@ const fill = (s: string, vars: Record<string, string | number>) =>
 export function StudySet({ id, guideHref, t }: { id: string; guideHref: string; t: T }) {
   const [data, setData] = useState<Payload | null>(null)
   const [busy, setBusy] = useState(false)
-  const [startFailed, setStartFailed] = useState(false)
   const [tab, setTab] = useState<'quiz' | 'cards' | 'projects'>('quiz')
-  const autoRequested = useRef(false)
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/materials/${id}/study-set`, { cache: 'no-store' })
@@ -49,25 +47,14 @@ export function StudySet({ id, guideHref, t }: { id: string; guideHref: string; 
 
   const generate = useCallback(async () => {
     setBusy(true)
-    setStartFailed(false)
     try {
       const res = await fetch(`/api/materials/${id}/study-set`, { method: 'POST' })
       if (!res.ok) throw new Error('study_set_start_failed')
       await load()
-    } catch {
-      setStartFailed(true)
     } finally {
       setBusy(false)
     }
   }, [id, load])
-
-  // Covers guides created before automatic derivatives existed, as well as a
-  // narrow race where the UI observes `done` before the worker queues derive.
-  useEffect(() => {
-    if (data?.guideStatus !== 'done' || data.status !== 'none' || autoRequested.current) return
-    autoRequested.current = true
-    void generate()
-  }, [data, generate])
 
   const applyWeakConcepts = useCallback((weakConcepts: string[]) => {
     const weak = new Set(weakConcepts)
@@ -93,17 +80,9 @@ export function StudySet({ id, guideHref, t }: { id: string; guideHref: string; 
       <p className="small" style={{ marginBottom: status === 'ready' ? 18 : 0 }}>{t.lede}</p>
 
       {status === 'none' && (
-        <div style={{ marginTop: 16 }}>
-          {!startFailed ? (
-            <p className="row" style={{ gap: 10 }}>
-              <span className="pill pill-run"><span className="dot dot-live" />{t.generating}</span>
-            </p>
-          ) : (
-            <button className="btn btn-ghost btn-sm" onClick={() => void generate()} disabled={busy}>
-              {t.retry}
-            </button>
-          )}
-        </div>
+        <button className="btn btn-primary" onClick={() => void generate()} disabled={busy} style={{ marginTop: 16 }}>
+          {busy ? t.generating : t.generate}
+        </button>
       )}
 
       {status === 'generating' && (

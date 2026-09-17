@@ -96,6 +96,8 @@ async function runJob(job: JobRow) {
 
 async function runGenerate(job: JobRow) {
   const req = JSON.parse(job.payload) as GenerationRequest
+  const material = getMaterial(job.material_id)
+  const autoStudySet = Boolean(material && !material.sandbox)
   const result = await runPipeline(req, {
     outDir: materialDir(job.material_id),
     onProgress: (stage, detail) =>
@@ -115,16 +117,15 @@ async function runGenerate(job: JobRow) {
     cached_tokens: result.usage.cached,
     api_cost_usd: cost,
     searches: result.searches,
+    ...(autoStudySet ? { derivatives_status: 'generating' as const, derivatives_error: null } : {}),
   })
 
   // A guide and its retrieval layer are one product. Queue the study set as
   // soon as the guide is usable instead of making the reader discover and
   // press a second generation button. Sandbox runs deliberately stop at the
   // PDF because they exist to compare guide quality only.
-  const material = getMaterial(job.material_id)
-  if (material && !material.sandbox) {
+  if (autoStudySet) {
     try {
-      updateMaterial(job.material_id, { derivatives_status: 'generating', derivatives_error: null })
       enqueueJob({ kind: 'derive', materialId: job.material_id, userId: job.user_id })
       recordAudit({ event: 'derive', userId: job.user_id, detail: `${job.material_id} · automatic` })
     } catch (err) {

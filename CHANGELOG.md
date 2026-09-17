@@ -10,8 +10,8 @@ reasoning is the part worth keeping.
 The quiz, flashcards and project briefs are now queued automatically at the end
 of every non-sandbox guide. The post-guide screen follows both jobs without a
 page refresh, so there is no second generation button between reading the guide
-and starting retrieval. Existing guides that predate this behaviour start their
-study set the next time their page is opened.
+and starting retrieval. Existing guides keep their on-demand button: opening an
+old document must not create retroactive API spend.
 
 A missed quiz concept now reorders the flashcards immediately in the same
 browser session; previously the attempt reached the database but the deck kept

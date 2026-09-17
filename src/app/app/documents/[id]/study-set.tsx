@@ -1,7 +1,7 @@
 'use client'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dict } from '@/lib/i18n'
-import type { DerivativesStatus } from '@/lib/types'
+import type { DerivativesStatus, Status } from '@/lib/types'
 
 type T = Dict['app']['material']['study']
 
@@ -12,6 +12,7 @@ interface QuizItem {
 }
 interface Project { id: number; title: string; brief: string; concepts: string[] }
 interface Payload {
+  guideStatus: Status
   status: DerivativesStatus
   error: string | null
   weakConcepts: string[]
@@ -26,7 +27,9 @@ const fill = (s: string, vars: Record<string, string | number>) =>
 export function StudySet({ id, guideHref, t }: { id: string; guideHref: string; t: T }) {
   const [data, setData] = useState<Payload | null>(null)
   const [busy, setBusy] = useState(false)
+  const [startFailed, setStartFailed] = useState(false)
   const [tab, setTab] = useState<'quiz' | 'cards' | 'projects'>('quiz')
+  const autoRequested = useRef(false)
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/materials/${id}/study-set`, { cache: 'no-store' })
@@ -35,24 +38,49 @@ export function StudySet({ id, guideHref, t }: { id: string; guideHref: string; 
 
   useEffect(() => { void load() }, [load])
 
-  // Poll while the derive job runs.
+  // Poll through guide generation too: this component is mounted from the
+  // first visit so the study set can appear without a page refresh.
   useEffect(() => {
-    if (data?.status !== 'generating') return
+    if (!data || (data.guideStatus === 'done' && data.status !== 'generating')) return
+    if (data.guideStatus === 'failed') return
     const timer = setTimeout(() => void load(), 2500)
     return () => clearTimeout(timer)
-  }, [data?.status, data, load])
+  }, [data, load])
 
-  const generate = async () => {
+  const generate = useCallback(async () => {
     setBusy(true)
+    setStartFailed(false)
     try {
-      await fetch(`/api/materials/${id}/study-set`, { method: 'POST' })
+      const res = await fetch(`/api/materials/${id}/study-set`, { method: 'POST' })
+      if (!res.ok) throw new Error('study_set_start_failed')
       await load()
+    } catch {
+      setStartFailed(true)
     } finally {
       setBusy(false)
     }
-  }
+  }, [id, load])
+
+  // Covers guides created before automatic derivatives existed, as well as a
+  // narrow race where the UI observes `done` before the worker queues derive.
+  useEffect(() => {
+    if (data?.guideStatus !== 'done' || data.status !== 'none' || autoRequested.current) return
+    autoRequested.current = true
+    void generate()
+  }, [data, generate])
+
+  const applyWeakConcepts = useCallback((weakConcepts: string[]) => {
+    const weak = new Set(weakConcepts)
+    setData((current) => current && ({
+      ...current,
+      weakConcepts,
+      flashcards: current.flashcards.map((card) => ({ ...card, weak: weak.has(card.concept) })),
+    }))
+  }, [])
 
   const status = data?.status ?? 'none'
+
+  if (!data || data.guideStatus !== 'done') return null
 
   return (
     <div className="card">
@@ -65,9 +93,17 @@ export function StudySet({ id, guideHref, t }: { id: string; guideHref: string; 
       <p className="small" style={{ marginBottom: status === 'ready' ? 18 : 0 }}>{t.lede}</p>
 
       {status === 'none' && (
-        <button className="btn btn-primary" onClick={generate} disabled={busy} style={{ marginTop: 16 }}>
-          {busy ? t.generating : t.generate}
-        </button>
+        <div style={{ marginTop: 16 }}>
+          {!startFailed ? (
+            <p className="row" style={{ gap: 10 }}>
+              <span className="pill pill-run"><span className="dot dot-live" />{t.generating}</span>
+            </p>
+          ) : (
+            <button className="btn btn-ghost btn-sm" onClick={() => void generate()} disabled={busy}>
+              {t.retry}
+            </button>
+          )}
+        </div>
       )}
 
       {status === 'generating' && (
@@ -110,7 +146,16 @@ export function StudySet({ id, guideHref, t }: { id: string; guideHref: string; 
             ))}
           </div>
 
-          {tab === 'quiz' && <Quiz id={id} items={data.quiz} guideHref={guideHref} t={t} />}
+          {tab === 'quiz' && (
+            <Quiz
+              id={id}
+              items={data.quiz}
+              guideHref={guideHref}
+              initialWeak={data.weakConcepts}
+              onWeakConcepts={applyWeakConcepts}
+              t={t}
+            />
+          )}
           {tab === 'cards' && <Cards id={id} cards={data.flashcards} t={t} />}
           {tab === 'projects' && <Projects projects={data.projects} t={t} />}
         </>
@@ -121,11 +166,20 @@ export function StudySet({ id, guideHref, t }: { id: string; guideHref: string; 
 
 /* ------------------------------------------------------------------- quiz */
 
-function Quiz({ id, items, guideHref, t }: { id: string; items: QuizItem[]; guideHref: string; t: T }) {
+function Quiz({
+  id, items, guideHref, initialWeak, onWeakConcepts, t,
+}: {
+  id: string
+  items: QuizItem[]
+  guideHref: string
+  initialWeak: string[]
+  onWeakConcepts: (concepts: string[]) => void
+  t: T
+}) {
   const [pos, setPos] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [hits, setHits] = useState(0)
-  const [weak, setWeak] = useState<string[]>([])
+  const [weak, setWeak] = useState<string[]>(initialWeak)
   const done = pos >= items.length
 
   const grade = async (correct: boolean) => {
@@ -139,13 +193,17 @@ function Quiz({ id, items, guideHref, t }: { id: string; items: QuizItem[]; guid
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ questionId: q.id, correct }),
       })
-      if (res.ok) setWeak((await res.json()).weakConcepts ?? [])
+      if (res.ok) {
+        const concepts = (await res.json()).weakConcepts ?? []
+        setWeak(concepts)
+        onWeakConcepts(concepts)
+      }
     } catch {
       /* the attempt is a nicety, not worth blocking the flow */
     }
   }
 
-  const restart = () => { setPos(0); setRevealed(false); setHits(0) }
+  const restart = () => { setPos(0); setRevealed(false); setHits(0); setWeak(initialWeak) }
 
   if (done) {
     return (
@@ -234,6 +292,11 @@ function Cards({ id, cards, t }: { id: string; cards: Flashcard[]; t: T }) {
       <div className="row-between">
         <span className="tiny">{fill(t.cardProgress, { n: pos + 1, total: ordered.length })}</span>
         <a className="link-arrow" href={`/api/materials/${id}/anki`}>{t.exportAnki} <span>↓</span></a>
+      </div>
+
+      <div className="card card-quiet" style={{ paddingBlock: 14 }}>
+        <div className="stat-label" style={{ marginBottom: 5 }}>{t.spacingTitle}</div>
+        <p className="small" style={{ margin: 0 }}>{t.spacingLede}</p>
       </div>
 
       <button

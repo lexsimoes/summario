@@ -10,6 +10,7 @@ import {
   type JobRow,
 } from './db'
 import { refundCredits } from './credits'
+import { recordAudit } from './audit'
 import { deriveStudySet } from './derive'
 import { materialDir, runPipeline } from './pipeline'
 import { estimatedModelCost } from './model-pricing'
@@ -115,6 +116,24 @@ async function runGenerate(job: JobRow) {
     api_cost_usd: cost,
     searches: result.searches,
   })
+
+  // A guide and its retrieval layer are one product. Queue the study set as
+  // soon as the guide is usable instead of making the reader discover and
+  // press a second generation button. Sandbox runs deliberately stop at the
+  // PDF because they exist to compare guide quality only.
+  const material = getMaterial(job.material_id)
+  if (material && !material.sandbox) {
+    try {
+      updateMaterial(job.material_id, { derivatives_status: 'generating', derivatives_error: null })
+      enqueueJob({ kind: 'derive', materialId: job.material_id, userId: job.user_id })
+      recordAudit({ event: 'derive', userId: job.user_id, detail: `${job.material_id} · automatic` })
+    } catch (err) {
+      // The guide is already complete, so a derivative enqueue failure must
+      // not turn it into a failed (and refunded) guide.
+      const message = err instanceof Error ? err.message : String(err)
+      updateMaterial(job.material_id, { derivatives_status: 'failed', derivatives_error: message })
+    }
+  }
 }
 
 async function runDerive(job: JobRow) {

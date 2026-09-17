@@ -27,6 +27,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const weak = new Set(quizWeakConcepts(id, user.id))
 
   return NextResponse.json({
+    guideStatus: m.status,
     status: m.derivatives_status,
     error: m.derivatives_error,
     weakConcepts: [...weak],

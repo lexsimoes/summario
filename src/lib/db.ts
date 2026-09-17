@@ -495,6 +495,7 @@ export function createMaterial(m: {
          source_file_ref = excluded.source_file_ref, credits_cost = excluded.credits_cost,
          sandbox = excluded.sandbox,
          status = 'pending', error = NULL, stage_detail = '', validation = NULL,
+         derivatives_status = 'none', derivatives_error = NULL,
          api_cost_usd = NULL, searches = 0,
          updated_at = datetime('now')`,
     )

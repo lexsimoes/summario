@@ -6,6 +6,19 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### Retrieval begins automatically when the guide is ready
+The quiz, flashcards and project briefs are now queued automatically at the end
+of every non-sandbox guide. The post-guide screen follows both jobs without a
+page refresh, so there is no second generation button between reading the guide
+and starting retrieval. Existing guides that predate this behaviour start their
+study set the next time their page is opened.
+
+A missed quiz concept now reorders the flashcards immediately in the same
+browser session; previously the attempt reached the database but the deck kept
+its stale ordering until a reload. Anki exports use that same weak-first order
+and add `summario-weak` to cards for concepts the reader most recently missed.
+Spacing itself remains Anki's job.
+
 ### Five useful Free guides and a 30-generation Plus pack
 Free now includes five web-researched guides per UTC month, including the quiz,
 flashcards, project briefs and Anki export. PDF upload is blocked in both the

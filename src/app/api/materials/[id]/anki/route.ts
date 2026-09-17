@@ -1,5 +1,5 @@
 import { currentUser } from '@/lib/auth'
-import { getFlashcards, getMaterial } from '@/lib/db'
+import { getFlashcards, getMaterial, quizWeakConcepts } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
@@ -26,12 +26,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const m = getMaterial(id)
   if (!m || m.user_id !== user.id) return new Response('Not found', { status: 404 })
 
-  const cards = getFlashcards(id)
+  const weak = new Set(quizWeakConcepts(id, user.id))
+  const cards = getFlashcards(id).sort(
+    (a, b) => Number(weak.has(b.tags)) - Number(weak.has(a.tags)),
+  )
   if (!cards.length) return new Response('No flashcards for this material yet.', { status: 404 })
 
   const lines = ['#separator:tab', '#html:false', '#columns:Front\tBack\tTags']
   for (const c of cards) {
-    lines.push([flat(c.front), flat(c.back), flat(c.tags).replace(/\s+/g, '-')].join('\t'))
+    const concept = flat(c.tags).replace(/\s+/g, '-')
+    const tags = [concept, weak.has(c.tags) ? 'summario-weak' : ''].filter(Boolean).join(' ')
+    lines.push([flat(c.front), flat(c.back), tags].join('\t'))
   }
 
   return new Response(lines.join('\n') + '\n', {

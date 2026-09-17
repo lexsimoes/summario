@@ -38,7 +38,10 @@ version of the same thing.
   `src/instrumentation.ts` on every boot and re-queues what was running, failing
   and refunding only what has spent its retry budget.
 - **Derivatives read the guide's HTML, never the source.** ~70% fewer tokens, and
-  the cards stay consistent with the document the reader has.
+  the cards stay consistent with the document the reader has. Every non-sandbox
+  guide queues its study set automatically when the PDF is ready. Quiz misses
+  reprioritize the in-app deck immediately and Anki exports put those cards
+  first with the `summario-weak` tag; Anki remains responsible for scheduling.
 - **The build is Turbopack.** Next 15.5's webpack path cannot bundle middleware
   on Node 22 at all (`WebpackError is not a constructor`, from inside its own
   minifier), and 15.5.24 is the end of that line. Do not "simplify" `npm run

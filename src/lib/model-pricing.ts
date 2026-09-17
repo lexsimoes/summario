@@ -9,9 +9,16 @@ export const MODEL_PRICES: Record<string, { input: number; cached: number; outpu
   'gpt-5.6-terra': { input: 2, cached: 0.2, output: 12 },
 }
 
+/** OpenAI Responses API web search: USD 10 / 1,000 calls. */
+export const OPENAI_WEB_SEARCH_COST = 0.01
+
 export function estimatedModelCost(model: string, usage: { input: number; output: number; cached: number }) {
   const price = MODEL_PRICES[model]
   if (!price) return null
   const uncachedInput = Math.max(0, usage.input - usage.cached)
   return (uncachedInput * price.input + usage.cached * price.cached + usage.output * price.output) / 1_000_000
+}
+
+export function estimatedSearchCost(model: string, searches: number) {
+  return model.startsWith('gpt-') ? searches * OPENAI_WEB_SEARCH_COST : 0
 }

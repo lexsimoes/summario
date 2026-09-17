@@ -6,6 +6,13 @@ reasoning is the part worth keeping.
 
 ## Unreleased
 
+### Complete per-guide API cost accounting
+The material row now keeps the derivative model, token usage and API cost beside
+the guide's own usage. OpenAI web-search calls are included at their published
+USD 0.01 per call instead of being left out of the displayed estimate. The guide
+page and material API expose guide, study-set and combined cost separately, so a
+real end-to-end generation can be priced without consulting provider dashboards.
+
 ### Retrieval begins automatically when the guide is ready
 The quiz, flashcards and project briefs are now queued automatically at the end
 of every non-sandbox guide. The post-guide screen follows both jobs without a

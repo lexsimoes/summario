@@ -15,6 +15,9 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   if (!m || m.user_id !== user.id) notFound()
 
   const { t } = await tr()
+  const totalApiCost = m.api_cost_usd === null
+    ? null
+    : m.api_cost_usd + (m.derivative_api_cost_usd ?? 0)
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -27,15 +30,21 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
         {m.description ? ` · ${m.description}` : ''}
       </p>
 
-      {m.api_cost_usd !== null && (
+      {totalApiCost !== null && (
         <div className="card" style={{ marginBottom: 22, paddingBlock: 16 }}>
           <div className="row-between">
-            <span className="stat-label">Custo estimado da API</span>
-            <strong>USD {m.api_cost_usd.toFixed(4)}</strong>
+            <span className="stat-label">Custo estimado total da API</span>
+            <strong>USD {totalApiCost.toFixed(4)}</strong>
           </div>
+          <p className="tiny" style={{ margin: '7px 0 0' }}>
+            Guia ({m.model}): USD {m.api_cost_usd!.toFixed(4)}
+            {m.derivative_api_cost_usd !== null && (
+              <> · Materiais ({m.derivative_model}): USD {m.derivative_api_cost_usd.toFixed(4)}</>
+            )}
+          </p>
           {m.searches > 0 && (
             <p className="tiny" style={{ margin: '7px 0 0' }}>
-              {m.searches} chamada(s) de pesquisa; eventual tarifa da ferramenta não incluída.
+              {m.searches} chamada(s) de pesquisa, já incluída(s) no total.
             </p>
           )}
         </div>

@@ -13,7 +13,7 @@ import { refundCredits } from './credits'
 import { recordAudit } from './audit'
 import { deriveStudySet } from './derive'
 import { materialDir, runPipeline } from './pipeline'
-import { estimatedModelCost } from './model-pricing'
+import { estimatedModelCost, estimatedSearchCost } from './model-pricing'
 import type { GenerationRequest, JobKind } from './types'
 
 /**
@@ -103,7 +103,10 @@ async function runGenerate(job: JobRow) {
     onProgress: (stage, detail) =>
       updateMaterial(job.material_id, { status: stage as never, stage_detail: detail }),
   })
-  const cost = estimatedModelCost(req.model ?? '', result.usage)
+  const tokenCost = estimatedModelCost(req.model ?? '', result.usage)
+  const cost = tokenCost === null
+    ? null
+    : tokenCost + estimatedSearchCost(req.model ?? '', result.searches)
   updateMaterial(job.material_id, {
     status: 'done',
     stage_detail: '',
@@ -141,9 +144,18 @@ async function runDerive(job: JobRow) {
   const m = getMaterial(job.material_id)
   if (!m) throw new Error(`Material ${job.material_id} not found`)
   updateMaterial(job.material_id, { derivatives_status: 'generating', derivatives_error: null })
-  const { set } = await deriveStudySet(m)
+  const { set, model, usage } = await deriveStudySet(m)
+  const cost = estimatedModelCost(model, usage)
   replaceStudySet(job.material_id, set)
-  updateMaterial(job.material_id, { derivatives_status: 'ready', derivatives_error: null })
+  updateMaterial(job.material_id, {
+    derivatives_status: 'ready',
+    derivatives_error: null,
+    derivative_model: model,
+    derivative_input_tokens: usage.input,
+    derivative_output_tokens: usage.output,
+    derivative_cached_tokens: usage.cached,
+    derivative_api_cost_usd: cost,
+  })
 }
 
 /** Side effects on the owning row when a job ends in failure. */

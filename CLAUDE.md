@@ -26,7 +26,8 @@ version of the same thing.
   append-only; balance is `SUM(delta)`. Monthly free usage lives separately in
   `free_guide_usage`, because an expiring entitlement must not contaminate the
   non-expiring credit ledger. Study sets cost nothing and are available on every
-  non-sandbox guide.
+  non-sandbox guide. Token usage and API cost are stored separately for the guide
+  and its study set; OpenAI web-search calls are included in the guide cost.
 - **Access is invite-only; there is no self-signup.** The owner creates
   single-use invite links from `/app/admin`, and only the token's SHA-256 is
   stored. Disabling an account is reversible and checked on every request, not

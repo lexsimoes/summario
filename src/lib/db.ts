@@ -65,6 +65,21 @@ function migrate(db: Database.Database) {
   if (!columns.has('derivatives_error')) {
     db.exec('ALTER TABLE materials ADD COLUMN derivatives_error TEXT')
   }
+  if (!columns.has('derivative_model')) {
+    db.exec("ALTER TABLE materials ADD COLUMN derivative_model TEXT NOT NULL DEFAULT ''")
+  }
+  if (!columns.has('derivative_input_tokens')) {
+    db.exec('ALTER TABLE materials ADD COLUMN derivative_input_tokens INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!columns.has('derivative_output_tokens')) {
+    db.exec('ALTER TABLE materials ADD COLUMN derivative_output_tokens INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!columns.has('derivative_cached_tokens')) {
+    db.exec('ALTER TABLE materials ADD COLUMN derivative_cached_tokens INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!columns.has('derivative_api_cost_usd')) {
+    db.exec('ALTER TABLE materials ADD COLUMN derivative_api_cost_usd REAL')
+  }
 
   const userColumns = new Set(
     (db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).map((c) => c.name),
@@ -144,6 +159,13 @@ CREATE TABLE IF NOT EXISTS materials (
   input_tokens INTEGER DEFAULT 0,
   output_tokens INTEGER DEFAULT 0,
   cached_tokens INTEGER DEFAULT 0,
+  derivatives_status TEXT NOT NULL DEFAULT 'none',
+  derivatives_error TEXT,
+  derivative_model TEXT NOT NULL DEFAULT '',
+  derivative_input_tokens INTEGER NOT NULL DEFAULT 0,
+  derivative_output_tokens INTEGER NOT NULL DEFAULT 0,
+  derivative_cached_tokens INTEGER NOT NULL DEFAULT 0,
+  derivative_api_cost_usd REAL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -308,6 +330,11 @@ export interface MaterialRow {
   cached_tokens: number
   derivatives_status: DerivativesStatus
   derivatives_error: string | null
+  derivative_model: string
+  derivative_input_tokens: number
+  derivative_output_tokens: number
+  derivative_cached_tokens: number
+  derivative_api_cost_usd: number | null
   created_at: string
   updated_at: string
 }
@@ -496,6 +523,9 @@ export function createMaterial(m: {
          sandbox = excluded.sandbox,
          status = 'pending', error = NULL, stage_detail = '', validation = NULL,
          derivatives_status = 'none', derivatives_error = NULL,
+         derivative_model = '', derivative_input_tokens = 0,
+         derivative_output_tokens = 0, derivative_cached_tokens = 0,
+         derivative_api_cost_usd = NULL,
          api_cost_usd = NULL, searches = 0,
          updated_at = datetime('now')`,
     )

@@ -25,5 +25,22 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     sources: m.sources ? JSON.parse(m.sources) : [],
     validation: m.validation ? JSON.parse(m.validation) : null,
     usage: { input: m.input_tokens, output: m.output_tokens, cached: m.cached_tokens },
+    derivative: {
+      status: m.derivatives_status,
+      model: m.derivative_model,
+      usage: {
+        input: m.derivative_input_tokens,
+        output: m.derivative_output_tokens,
+        cached: m.derivative_cached_tokens,
+      },
+      costUsd: m.derivative_api_cost_usd,
+    },
+    cost: {
+      guideUsd: m.api_cost_usd,
+      derivativeUsd: m.derivative_api_cost_usd,
+      totalUsd: m.api_cost_usd === null
+        ? null
+        : m.api_cost_usd + (m.derivative_api_cost_usd ?? 0),
+    },
   })
 }

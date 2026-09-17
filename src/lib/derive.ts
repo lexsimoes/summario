@@ -27,11 +27,12 @@ function languageNote(m: MaterialRow): string {
 
 export async function deriveStudySet(
   m: MaterialRow,
-): Promise<{ set: StudySet; usage: { input: number; output: number; cached: number } }> {
+): Promise<{ set: StudySet; model: string; usage: { input: number; output: number; cached: number } }> {
   if (!m.html) throw new Error('Cannot derive a study set: the guide has no HTML.')
 
+  const model = m.credits_cost > 0 ? config.models.paidDerivative : config.models.freeDerivative
   const res = await call({
-    model: m.credits_cost > 0 ? config.models.paidDerivative : config.models.freeDerivative,
+    model,
     system: [{ type: 'text', text: loadPrompt('task-study-set.md') }],
     content: [
       { type: 'text', text: `=== POCKET GUIDE (HTML) ===\n${m.html}`, cache_control: { type: 'ephemeral' } },
@@ -67,6 +68,7 @@ export async function deriveStudySet(
 
   return {
     set,
+    model,
     usage: { input: res.inputTokens, output: res.outputTokens, cached: res.cachedTokens },
   }
 }

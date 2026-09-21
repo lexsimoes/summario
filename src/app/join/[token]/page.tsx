@@ -24,7 +24,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
   const usable = invite && isClaimable(invite)
 
   return (
-    <main style={{ minHeight: '100dvh', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
+    <main className="auth-ui" style={{ minHeight: '100dvh', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
       <div className="wrap nav-inner">
         <Brand />
         <LangToggle locale={locale} />

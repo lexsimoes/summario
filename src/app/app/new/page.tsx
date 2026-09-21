@@ -11,9 +11,9 @@ export default async function NewDocument() {
   const credits = creditState(user)
 
   return (
-    <div style={{ maxWidth: 680 }}>
-      <h1 className="title" style={{ marginBottom: 4 }}>{t.app.create.title}</h1>
-      <p className="small" style={{ marginBottom: 30 }}>{t.app.create.lede}</p>
+    <div className="workspace-new">
+      <div className="workspace-new-intro"><span aria-hidden="true">✦</span><h1 className="title" style={{ marginBottom: 4 }}>{t.app.create.title}</h1>
+      <p className="small" style={{ marginBottom: 30 }}>{t.app.create.lede}</p></div>
 
       <div className="card">
         <NewDocumentForm

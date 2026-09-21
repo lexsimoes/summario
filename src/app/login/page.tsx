@@ -13,7 +13,7 @@ export default async function LoginPage() {
   const { t, locale } = await tr()
 
   return (
-    <main style={{ minHeight: '100dvh', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
+    <main className="auth-ui" style={{ minHeight: '100dvh', display: 'grid', gridTemplateRows: 'auto 1fr' }}>
       <div className="wrap nav-inner">
         <Brand />
         <LangToggle locale={locale} />

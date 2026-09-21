@@ -1,273 +1,80 @@
 import Link from 'next/link'
 import { currentUser } from '@/lib/auth'
 import { tr } from '@/lib/i18n'
-import { SiteNav } from '@/components/site-nav'
-import { SiteFooter } from '@/components/site-footer'
-import { SampleGuide } from '@/components/sample-guide'
-import { Reveal } from '@/components/reveal'
+import { Brand } from '@/components/brand'
+import { LangToggle } from '@/components/lang-toggle'
+import { StudyDemo, LearningSteps, FlashcardPreview } from '@/components/landing-demo'
+import s from './landing.module.css'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const { t, locale } = await tr()
   const user = await currentUser()
-  const signedIn = Boolean(user)
-  const go = signedIn ? '/app' : '/login'
+  const go = user ? '/app' : '/login'
+  const pt = locale === 'pt'
+  const cta = user ? t.nav.dashboard : (pt ? 'Começar a aprender' : 'Start learning')
 
-  return (
-    <>
-      <SiteNav t={t} locale={locale} signedIn={signedIn} />
+  return <div className={s.landing}>
+    <a href="#main" className={s.skipLink}>{pt ? 'Pular para o conteúdo' : 'Skip to content'}</a>
+    <header className={s.header}>
+      <div className={s.navInner}>
+        <Brand />
+        <nav aria-label={pt ? 'Menu principal' : 'Main navigation'}>
+          <a className={s.navLink} href="#how">{t.nav.how}</a>
+          <a className={s.navLink} href="#pricing">{t.nav.pricing}</a>
+          <LangToggle locale={locale} />
+          <Link className={s.navCta} href={go}>{user ? t.nav.dashboard : t.nav.login} <span aria-hidden="true">→</span></Link>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <section className={s.hero}>
+        <div className={s.heroGrid}>
+          <div className={s.heroCopy}>
+            <h1>{pt ? <>Um jeito melhor<br />de aprender<br /><em>de verdade.</em></> : <>A better way<br />to learn<br /><em>anything.</em></>}</h1>
+            <p>{pt ? 'Transforme seus materiais em guias e atividades que fazem o aprendizado acontecer.' : 'Turn your study materials into guides and activities that make learning click.'}</p>
+            <Link className={s.primaryCta} href={go}>{cta} <span aria-hidden="true">→</span></Link>
+            <small>{pt ? 'Seu próximo capítulo começa aqui. Acesso por convite.' : 'Your next chapter starts here. Access by invitation.'}</small>
+          </div>
+          <div className={s.heroPreview}><div className={s.sparkle} aria-hidden="true">✦</div><StudyDemo locale={locale} /><span className={s.previewNote}>{pt ? 'menos releitura, mais descobertas' : 'less rereading, more lightbulb moments'}<span aria-hidden="true"> ⤴</span></span></div>
+        </div>
+        <div className={s.toolStrip}>
+          <p>{pt ? 'DO PRIMEIRO “COMO?” ATÉ O “AGORA ENTENDI”.' : 'FROM YOUR FIRST “HOW?” TO YOUR NEXT “GOT IT”.'}</p>
+          <div><span>▤ {pt ? 'Guias de estudo' : 'Study guides'}</span><span>✧ Flashcards</span><span>☑ Quizzes</span><span>↗ {pt ? 'Projetos' : 'Projects'}</span><span>▧ PDF</span><span>⟳ Anki</span></div>
+        </div>
+      </section>
 
-      {/* ------------------------------------------------------------ hero */}
-      <section className="section" style={{ paddingTop: 'clamp(48px, 7vw, 92px)' }}>
-        <div className="wrap split">
-          <div>
-            <p className="kicker">{t.hero.kicker}</p>
-            <h1 className="display" dangerouslySetInnerHTML={{ __html: t.hero.title }} />
-            <p className="lede measure" style={{ marginTop: 24 }}>{t.hero.lede}</p>
-            <div className="row" style={{ marginTop: 34, gap: 14 }}>
-              <Link href={go} className="btn btn-primary btn-lg">{t.hero.ctaPrimary}</Link>
-              <a href="#anatomy" className="btn btn-ghost btn-lg">{t.hero.ctaSecondary}</a>
+      <section id="how" className={s.section}>
+        <h2>{pt ? <>Aprender pode ser <em>simples.</em></> : <>Learning can be <em>simple.</em></>}</h2>
+        <LearningSteps locale={locale} />
+      </section>
+
+      <section id="features" className={s.section}>
+        <div className={s.sectionIntro}><h2>{pt ? 'E isso é só o começo.' : 'And that’s just the beginning.'}</h2><p>{pt ? 'Tudo para entender, praticar e levar o conhecimento com você.' : 'Everything you need to understand, practice, and take your knowledge further.'}</p></div>
+        <div className={s.featureGrid}>
+          <article className={`${s.featureCard} ${s.wideFeature}`}>
+            <div><span className={s.eyebrow}>{pt ? 'SEU GUIA, DO SEU JEITO' : 'YOUR GUIDE, YOUR WAY'}</span><h3>{pt ? 'Grandes ideias. Agora fazem sentido.' : 'Big ideas. Finally making sense.'}</h3><p>{pt ? 'Analogias que aproximam. Conceitos que se conectam. Um guia organizado a partir do seu tema ou material, pronto para ler e imprimir.' : 'Relatable analogies. Connected concepts. A structured guide built from your topic or material, ready to read and print.'}</p><Link href={go} className={s.textLink}>{pt ? 'Criar meu guia' : 'Create my guide'} →</Link></div>
+            <div className={s.guideIllustration} aria-label={pt ? 'Exemplo ilustrativo de guia de estudo' : 'Illustrative study guide preview'}>
+              <div className={s.backPage} /><div className={s.guidePage}><div className={s.guideBrand}>summario <span>POCKET GUIDE</span></div><small>01 / {pt ? 'BIOLOGIA CELULAR' : 'CELL BIOLOGY'}</small><h4>{pt ? 'Um universo em cada célula.' : 'A universe inside every cell.'}</h4><div className={s.guideCallout}><b>✦ {pt ? 'Pense assim' : 'Think of it this way'}</b><p>{pt ? 'A célula é uma pequena cidade. Cada organela tem um trabalho que mantém tudo funcionando.' : 'A cell is a tiny city. Every organelle has a job that keeps everything running.'}</p></div><b className={s.guideSub}>The mitochondrion</b><div className={s.textLines}><i /><i /><i /></div><div className={s.guideFormula}>ADP + Pᵢ → ATP</div></div>
             </div>
-            <p className="tiny" style={{ marginTop: 18 }}>{t.hero.note}</p>
-          </div>
-
-          <div>
-            <div className="card card-raised" style={{ padding: 'clamp(18px, 2.4vw, 26px)' }}>
-              <SampleGuide locale={locale} />
-            </div>
-            <p className="tiny center" style={{ marginTop: 14 }}>{t.hero.sampleCaption}</p>
-          </div>
+          </article>
+          <article className={s.featureCard}><h3>{pt ? 'Pratique até fazer sentido.' : 'Practice until it clicks.'}</h3><p>{pt ? 'Recupere da memória. Vire o cartão. Descubra o que já sabe.' : 'Recall it. Flip the card. Discover what you already know.'}</p><div className={s.flashcardStack}><FlashcardPreview locale={locale} /></div></article>
+          <article className={`${s.featureCard} ${s.languageFeature}`}><h3>{pt ? 'Entenda na sua língua.' : 'Understand it in your language.'}</h3><p>{pt ? 'Português, inglês ou os dois. A intuição e o vocabulário técnico lado a lado.' : 'Portuguese, English, or both. Intuition and technical vocabulary, side by side.'}</p><div className={s.languageArt} aria-hidden="true"><div><span>PT</span><strong>Agora<br />entendi.</strong></div><div><span>EN</span><strong>Now it<br />clicks.</strong></div><b>↔</b></div></article>
+          <article className={s.featureCard}><h3>{pt ? 'Seu conhecimento vai com você.' : 'Take your knowledge with you.'}</h3><p>{pt ? 'Leia na tela ou imprima seu guia em PDF. Seu estudo cabe na sua rotina.' : 'Read on screen or print your PDF guide. Make studying fit your day.'}</p><div className={s.deviceArt} aria-hidden="true"><div className={s.laptop}><div><small>summario</small><b>{pt ? 'Minha biblioteca' : 'My library'}</b><span /><span /><span /></div></div><div className={s.phone}><small>summario</small><b>{pt ? 'Vamos aprender?' : 'Ready to learn?'}</b><span>✦</span></div></div></article>
+          <article className={`${s.featureCard} ${s.ankiFeature}`}><h3>{pt ? 'Lembre por mais tempo.' : 'Remember for longer.'}</h3><p>{pt ? 'Exporte seus flashcards para o Anki e continue com a repetição espaçada.' : 'Export your flashcards to Anki and keep going with spaced repetition.'}</p><div className={s.ankiArt} aria-hidden="true"><span>summario</span><i>⟶</i><span>✦<b>Anki</b></span></div></article>
         </div>
       </section>
 
-      <hr className="divider" />
-
-      {/* --------------------------------------------------------- problem */}
-      <section className="section">
-        <div className="wrap split">
-          <div>
-            <p className="kicker">{t.problem.kicker}</p>
-            <h2 className="title">{t.problem.title}</h2>
-          </div>
-          <div>
-            <p className="prose">{t.problem.p1}</p>
-            <p className="prose">{t.problem.p2}</p>
-          </div>
-        </div>
-
-        <div className="wrap" style={{ marginTop: 'clamp(36px, 5vw, 64px)' }}>
-          <p className="kicker muted">{t.problem.layersTitle}</p>
-          <Reveal className="grid g3">
-            {t.problem.layers.map((l, i) => (
-              <div key={l.t} className="card card-lift">
-                <div className="step-num">{i + 1}</div>
-                <h3 className="subtitle">{l.t}</h3>
-                <p className="small" style={{ margin: 0 }}>{l.d}</p>
-              </div>
-            ))}
-          </Reveal>
-        </div>
+      <section id="pricing" className={s.section}>
+        <div className={s.sectionIntro}><h2>{pt ? <>Seu ritmo. <em>Seu plano.</em></> : <>Your pace. <em>Your plan.</em></>}</h2><p>{t.pricing.lede}</p></div>
+        <div className={s.pricingGrid}>{t.pricing.packs.map(pack => <article key={pack.n} className={s.priceCard} data-featured={Boolean(pack.best)}><div className={s.priceHeader}><h3>{pack.n}</h3>{pack.best && <span>{pack.best}</span>}</div><strong className={s.price}>{pack.p}</strong><b>{pack.c}</b><p>{pack.d}</p><Link className={pack.best ? s.primaryCta : s.secondaryCta} href={go}>{cta} →</Link></article>)}</div>
+        <p className={s.pricingNote}>{t.pricing.note}</p>
       </section>
 
-      {/* ------------------------------------------------------------- how */}
-      <section id="how" className="section" style={{ background: 'var(--paper-2)' }}>
-        <div className="wrap">
-          <p className="kicker">{t.how.kicker}</p>
-          <h2 className="title measure">{t.how.title}</h2>
-
-          <Reveal className="grid g2" style={{ marginTop: 44 }}>
-            {t.how.steps.map((s, i) => (
-              <div key={s.t} className="card card-lift" style={{ background: 'var(--surface)' }}>
-                <div className="step-num">{i + 1}</div>
-                <h3 className="subtitle">{s.t}</h3>
-                <p className="small" style={{ margin: 0 }}>{s.d}</p>
-              </div>
-            ))}
-          </Reveal>
-        </div>
-      </section>
-
-      {/* --------------------------------------------------------- anatomy */}
-      <section id="anatomy" className="section">
-        <div className="wrap">
-          <p className="kicker">{t.anatomy.kicker}</p>
-          <h2 className="title measure">{t.anatomy.title}</h2>
-          <p className="lede measure" style={{ marginTop: 16 }}>{t.anatomy.lede}</p>
-
-          <div className="split" style={{ marginTop: 'clamp(36px, 5vw, 64px)', alignItems: 'start' }}>
-            <div className="card card-raised sticky-aside">
-              <SampleGuide locale={locale} />
-            </div>
-
-            <div className="stack-l">
-              {[
-                { l: t.anatomy.labels.bar, d: t.anatomy.labels.barD },
-                { l: t.anatomy.labels.intuition, d: t.anatomy.labels.intuitionD },
-                { l: t.anatomy.labels.tech, d: t.anatomy.labels.techD },
-                { l: t.anatomy.labels.deepdive, d: t.anatomy.labels.deepdiveD },
-                { l: t.anatomy.labels.link, d: t.anatomy.labels.linkD },
-              ].map((a) => (
-                <div key={a.l} className="annot">
-                  <p className="annot-tag">{a.l}</p>
-                  <p className="prose" style={{ margin: 0 }}>{a.d}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------- languages */}
-      <section className="section" style={{ background: 'var(--accent-deep)', color: '#fff' }}>
-        <div className="wrap">
-          <p className="kicker" style={{ color: '#b9a8ee' }}>{t.langs.kicker}</p>
-          <h2 className="title measure" style={{ color: '#fff' }}>{t.langs.title}</h2>
-          <p className="lede measure" style={{ marginTop: 16, color: 'rgba(255,255,255,.72)' }}>{t.langs.lede}</p>
-
-          <Reveal className="grid g3" style={{ marginTop: 44 }}>
-            {t.langs.modes.map((m) => (
-              <div
-                key={m.n}
-                className="card card-lift"
-                style={{ background: 'rgba(255,255,255,.06)', borderColor: 'rgba(255,255,255,.14)' }}
-              >
-                <div className="row" style={{ marginBottom: 12 }}>
-                  <h3 className="subtitle" style={{ margin: 0, color: '#fff' }}>{m.n}</h3>
-                  {m.tag && (
-                    <span className="pill" style={{ background: 'rgba(255,255,255,.12)', borderColor: 'rgba(255,255,255,.2)', color: '#d8cdf6' }}>
-                      {m.tag}
-                    </span>
-                  )}
-                </div>
-                <p className="small" style={{ margin: 0, color: 'rgba(255,255,255,.68)' }}>{m.d}</p>
-              </div>
-            ))}
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------------- method */}
-      <section id="method" className="section">
-        <div className="wrap">
-          <p className="kicker">{t.method.kicker}</p>
-          <h2 className="title measure">{t.method.title}</h2>
-
-          <ol className="grid" style={{ marginTop: 44, padding: 0, listStyle: 'none', gap: 0 }}>
-            {t.method.steps.map((s, i) => (
-              <li
-                key={s.t}
-                className="row"
-                style={{
-                  gap: 22,
-                  alignItems: 'baseline',
-                  padding: '22px 0',
-                  borderTop: i === 0 ? '1px solid var(--rule)' : 0,
-                  borderBottom: '1px solid var(--rule)',
-                }}
-              >
-                <span
-                  className="mono"
-                  style={{ color: 'var(--accent)', fontWeight: 700, minWidth: 28, letterSpacing: '.04em' }}
-                >
-                  0{i + 1}
-                </span>
-                <span style={{ flex: '1 1 220px', fontFamily: 'var(--serif)', fontSize: 20, letterSpacing: '-0.012em' }}>
-                  {s.t}
-                </span>
-                <span className="small" style={{ flex: '2 1 320px', margin: 0 }}>{s.d}</span>
-              </li>
-            ))}
-          </ol>
-
-          <div
-            className="card"
-            style={{ marginTop: 36, background: 'var(--intuition-bg)', borderColor: 'var(--intuition-br)', borderLeftWidth: 4 }}
-          >
-            <p className="annot-tag" style={{ color: 'var(--intuition-lab)' }}>{t.method.soonTitle}</p>
-            <p className="prose" style={{ margin: 0, color: 'var(--intuition-ink)' }}>{t.method.soon}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* --------------------------------------------------------- pricing */}
-      <section id="pricing" className="section" style={{ background: 'var(--paper-2)' }}>
-        <div className="wrap">
-          <p className="kicker">{t.pricing.kicker}</p>
-          <h2 className="title measure">{t.pricing.title}</h2>
-          <p className="lede measure" style={{ marginTop: 16 }}>{t.pricing.lede}</p>
-
-          <Reveal className="grid g2" style={{ marginTop: 44, alignItems: 'stretch' }}>
-            {t.pricing.packs.map((p) => (
-              <div
-                key={p.n}
-                className={p.best ? 'card card-raised card-lift' : 'card card-lift'}
-                style={{
-                  background: 'var(--surface)',
-                  borderColor: p.best ? 'var(--accent)' : undefined,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
-                }}
-              >
-                <div className="row-between">
-                  <span className="stat-label">{p.n}</span>
-                  {p.best && <span className="pill pill-accent">{p.best}</span>}
-                </div>
-                <div>
-                  <div className="stat-value">{p.p}</div>
-                  <p className="small" style={{ margin: '6px 0 0' }}>{p.c}</p>
-                </div>
-                <p className="small" style={{ margin: 0, flex: 1 }}>{p.d}</p>
-                <button className="btn btn-ghost btn-block" disabled>{p.action}</button>
-              </div>
-            ))}
-          </Reveal>
-
-          <p className="tiny" style={{ marginTop: 22, maxWidth: '62ch' }}>{t.pricing.note}</p>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------- faq */}
-      <section className="section">
-        <div className="wrap split" style={{ alignItems: 'start' }}>
-          <div>
-            <p className="kicker">{t.faq.kicker}</p>
-            <h2 className="title">{t.faq.title}</h2>
-          </div>
-          <div>
-            {t.faq.items.map((f, i) => (
-              <details
-                key={f.q}
-                style={{ borderTop: i === 0 ? '1px solid var(--rule)' : 0, borderBottom: '1px solid var(--rule)', padding: '18px 0' }}
-              >
-                <summary
-                  style={{ cursor: 'pointer', fontWeight: 600, fontSize: 15.5, listStyle: 'none', letterSpacing: '-0.008em' }}
-                >
-                  {f.q}
-                </summary>
-                <p className="small" style={{ margin: '12px 0 0' }}>{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------- cta */}
-      <section className="section-tight">
-        <div className="wrap">
-          <div
-            className="card center"
-            style={{ background: 'var(--surface)', padding: 'clamp(36px, 6vw, 68px)', borderRadius: 22 }}
-          >
-            <h2 className="title" style={{ maxWidth: '20ch', margin: '0 auto 18px' }}>{t.hero.title.replace(/<\/?em>/g, '')}</h2>
-            <Link href={go} className="btn btn-primary btn-lg">{t.hero.ctaPrimary}</Link>
-            <p className="tiny" style={{ marginTop: 16 }}>{t.hero.note}</p>
-          </div>
-        </div>
-      </section>
-
-      <SiteFooter t={t} />
-    </>
-  )
+      <section id="faq" className={`${s.section} ${s.faq}`}><div className={s.sectionIntro}><h2>{pt ? 'Ficou alguma dúvida?' : 'Frequently asked questions'}</h2><p>{pt ? 'O que você precisa saber antes de começar.' : 'A few things to know before you get started.'}</p></div><div className={s.faqList}>{t.faq.items.map(f => <details key={f.q}><summary>{f.q}<span aria-hidden="true">+</span></summary><p>{f.a}</p></details>)}</div></section>
+      <section className={s.finalCta}><span aria-hidden="true">✦</span><h2>{pt ? <>Sua próxima descoberta<br />começa aqui.</> : <>Your next discovery<br />starts here.</>}</h2><p>{pt ? 'Menos tempo organizando. Mais tempo aprendendo.' : 'Less time organizing. More time learning.'}</p><Link href={go} className={s.primaryCta}>{cta} →</Link><small>{t.hero.note}</small></section>
+    </main>
+    <footer className={s.footer}><div><Brand /><p>{pt ? 'Estude com curiosidade. Aprenda de verdade.' : 'Stay curious. Make learning stick.'}</p></div><nav aria-label={pt ? 'Rodapé' : 'Footer'}><a href="#how">{t.nav.how}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">FAQ</a><Link href={go}>{t.nav.login}</Link></nav><small>© {new Date().getFullYear()} summario</small></footer>
+  </div>
 }

@@ -10,7 +10,7 @@ FROM mcr.microsoft.com/playwright:v1.62.1-noble
 # pdftotext. Extraction is pure code and never spends a token, so it has to be
 # present in the image.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends poppler-utils \
+ && apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-por \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

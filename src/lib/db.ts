@@ -95,6 +95,13 @@ function migrate(db: Database.Database) {
   if (!quizColumns.has('concept')) {
     db.exec("ALTER TABLE quiz_questions ADD COLUMN concept TEXT DEFAULT ''")
   }
+  if (!quizColumns.has('origin')) db.exec("ALTER TABLE quiz_questions ADD COLUMN origin TEXT NOT NULL DEFAULT 'base'")
+  if (!quizColumns.has('difficulty')) db.exec("ALTER TABLE quiz_questions ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'standard'")
+  if (!quizColumns.has('batch_id')) db.exec('ALTER TABLE quiz_questions ADD COLUMN batch_id TEXT')
+  const noteColumns = new Set((db.prepare('PRAGMA table_info(guide_notes)').all() as { name: string }[]).map((c) => c.name))
+  if (!noteColumns.has('guide_hash')) db.exec("ALTER TABLE guide_notes ADD COLUMN guide_hash TEXT NOT NULL DEFAULT ''")
+  const chatColumns = new Set((db.prepare('PRAGMA table_info(guide_chat_messages)').all() as { name: string }[]).map((c) => c.name))
+  if (!chatColumns.has('guide_hash')) db.exec("ALTER TABLE guide_chat_messages ADD COLUMN guide_hash TEXT NOT NULL DEFAULT ''")
 
   // The first Free plan allowed one guide per month and encoded that limit in
   // the primary key. Rebuild once so each generation gets its own usage row;
@@ -211,7 +218,46 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   question TEXT NOT NULL, answer TEXT NOT NULL,
   explanation TEXT DEFAULT '', trap TEXT DEFAULT '',
   is_multi_select INTEGER DEFAULT 0,
-  concept TEXT DEFAULT ''
+  concept TEXT DEFAULT '',
+  origin TEXT NOT NULL DEFAULT 'base',
+  difficulty TEXT NOT NULL DEFAULT 'standard',
+  batch_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS guide_notes (
+  material_id TEXT NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  section_id TEXT NOT NULL,
+  guide_hash TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  highlight TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (material_id, user_id, guide_hash, section_id)
+);
+
+CREATE TABLE IF NOT EXISTS guide_chat_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  material_id TEXT NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  guide_hash TEXT NOT NULL DEFAULT '',
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  citations TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS guide_chat_by_material ON guide_chat_messages(material_id, user_id, id DESC);
+
+CREATE TABLE IF NOT EXISTS guide_ai_usage (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  material_id TEXT NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  model TEXT NOT NULL,
+  input_tokens INTEGER NOT NULL,
+  output_tokens INTEGER NOT NULL,
+  cached_tokens INTEGER NOT NULL,
+  cost_usd REAL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -728,6 +774,9 @@ export interface QuizQuestionRow {
   trap: string
   is_multi_select: number
   concept: string
+  origin: string
+  difficulty: string
+  batch_id: string | null
 }
 export interface ProjectRow {
   id: number
@@ -770,6 +819,64 @@ export const getFlashcards = (materialId: string) =>
 
 export const getQuizQuestions = (materialId: string) =>
   getDb().prepare('SELECT * FROM quiz_questions WHERE material_id = ? ORDER BY id').all(materialId) as QuizQuestionRow[]
+
+export function addPracticeQuestions(materialId: string, batchId: string, difficulty: string, questions: Array<{
+  question: string; answer: string; explanation: string; trap: string; concept: string
+}>) {
+  const db = getDb()
+  return db.transaction(() => {
+    const insert = db.prepare(`INSERT INTO quiz_questions
+      (material_id, question, answer, explanation, trap, concept, origin, difficulty, batch_id)
+      VALUES (?, ?, ?, ?, ?, ?, 'practice', ?, ?)`)
+    for (const q of questions) insert.run(materialId, q.question, q.answer, q.explanation, q.trap, q.concept, difficulty, batchId)
+    return db.prepare('SELECT * FROM quiz_questions WHERE material_id = ? AND batch_id = ? ORDER BY id')
+      .all(materialId, batchId) as QuizQuestionRow[]
+  })()
+}
+
+export const getLatestPracticeQuestions = (materialId: string) =>
+  getDb().prepare(`SELECT * FROM quiz_questions WHERE material_id = ? AND origin = 'practice'
+    AND batch_id = (SELECT batch_id FROM quiz_questions WHERE material_id = ? AND origin = 'practice' ORDER BY id DESC LIMIT 1)
+    ORDER BY id`).all(materialId, materialId) as QuizQuestionRow[]
+
+export interface GuideNoteRow { section_id: string; note: string; highlight: string; updated_at: string }
+export const listGuideNotes = (materialId: string, userId: string, guideHash: string) =>
+  getDb().prepare('SELECT section_id, note, highlight, updated_at FROM guide_notes WHERE material_id = ? AND user_id = ? AND guide_hash = ? ORDER BY section_id')
+    .all(materialId, userId, guideHash) as GuideNoteRow[]
+
+export function saveGuideNote(materialId: string, userId: string, guideHash: string, sectionId: string, note: string, highlight: string) {
+  if (!note && !highlight) {
+    getDb().prepare('DELETE FROM guide_notes WHERE material_id = ? AND user_id = ? AND guide_hash = ? AND section_id = ?')
+      .run(materialId, userId, guideHash, sectionId)
+    return
+  }
+  getDb().prepare(`INSERT INTO guide_notes (material_id, user_id, guide_hash, section_id, note, highlight)
+    VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(material_id, user_id, guide_hash, section_id) DO UPDATE SET
+      note = excluded.note, highlight = excluded.highlight, updated_at = datetime('now')`)
+    .run(materialId, userId, guideHash, sectionId, note, highlight)
+}
+
+export interface GuideChatRow { id: number; question: string; answer: string; citations: string; created_at: string }
+export const listGuideChat = (materialId: string, userId: string, guideHash: string) =>
+  getDb().prepare('SELECT id, question, answer, citations, created_at FROM guide_chat_messages WHERE material_id = ? AND user_id = ? AND guide_hash = ? ORDER BY id DESC LIMIT 30')
+    .all(materialId, userId, guideHash) as GuideChatRow[]
+
+export function saveGuideChat(materialId: string, userId: string, guideHash: string, question: string, answer: string, citations: string[]) {
+  getDb().prepare('INSERT INTO guide_chat_messages (material_id, user_id, guide_hash, question, answer, citations) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(materialId, userId, guideHash, question, answer, JSON.stringify(citations))
+}
+
+export function saveGuideAiUsage(row: { materialId: string; userId: string; action: string; model: string;
+  input: number; output: number; cached: number; cost: number | null }) {
+  getDb().prepare(`INSERT INTO guide_ai_usage
+    (material_id, user_id, action, model, input_tokens, output_tokens, cached_tokens, cost_usd)
+    VALUES (@materialId, @userId, @action, @model, @input, @output, @cached, @cost)`).run(row)
+}
+
+export function guideAiUsageTotal(materialId: string, userId: string) {
+  return getDb().prepare('SELECT COALESCE(SUM(cost_usd), 0) AS cost FROM guide_ai_usage WHERE material_id = ? AND user_id = ?')
+    .get(materialId, userId) as { cost: number }
+}
 
 export const getProjects = (materialId: string) =>
   getDb().prepare('SELECT * FROM projects WHERE material_id = ? ORDER BY id').all(materialId) as ProjectRow[]

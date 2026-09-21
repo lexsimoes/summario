@@ -5,6 +5,7 @@ import { getMaterial } from '@/lib/db'
 import { tr } from '@/lib/i18n'
 import { DocumentStatus } from './document-status'
 import { StudySet } from './study-set'
+import { GuideWorkspace } from './guide-workspace'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   const m = getMaterial(id)
   if (!m || m.user_id !== user.id) notFound()
 
-  const { t } = await tr()
+  const { t, locale } = await tr()
   const totalApiCost = m.api_cost_usd === null
     ? null
     : m.api_cost_usd + (m.derivative_api_cost_usd ?? 0)
@@ -71,7 +72,10 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
         />
 
         {!m.sandbox && (
-          <StudySet id={id} guideHref={`/api/materials/${id}/html`} t={t.app.material.study} />
+          <>
+            <GuideWorkspace id={id} locale={locale} />
+            <StudySet id={id} guideHref={`/api/materials/${id}/html`} t={t.app.material.study} />
+          </>
         )}
       </div>
     </div>

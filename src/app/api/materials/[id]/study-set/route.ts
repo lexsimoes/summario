@@ -38,7 +38,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       concept: c.tags,
       weak: weak.has(c.tags),
     })),
-    quiz: getQuizQuestions(id).map((q) => ({
+    quiz: getQuizQuestions(id).filter((q) => q.origin === 'base').map((q) => ({
       id: q.id,
       question: q.question,
       answer: q.answer,

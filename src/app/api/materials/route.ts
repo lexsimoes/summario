@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { requireUserApi } from '@/lib/api-auth'
@@ -95,16 +96,22 @@ export async function POST(req: Request) {
     if (hasUpload) {
       const uploadDir = path.join(config.dataDir, 'uploads', user.id)
       await fs.mkdir(uploadDir, { recursive: true })
-      pdfPath = path.join(uploadDir, path.basename(pdf.name))
+      // OCR may run after this request returns. A unique filename prevents a
+      // second upload named "chapter.pdf" from replacing its source mid-job.
+      pdfPath = path.join(uploadDir, `${randomUUID()}.pdf`)
       await fs.writeFile(pdfPath, Buffer.from(await pdf.arrayBuffer()))
 
       const raw = await pdfToTextCached(pdfPath, config.dataDir)
-      const sliced = sliceSections(raw, from, to)
-      sectionMatched = sliced.matched
-      sourceText = cleanExtract(sliced.text)
-      if (sourceText.length < 500) {
-        return NextResponse.json({ error: 'empty_extract' }, { status: 400 })
+      const extracted = cleanExtract(raw)
+      const textDensity = extracted.length / Math.max(1, raw.split('\f').length - 1)
+      if (extracted.length >= 500 && textDensity >= 120) {
+        const sliced = sliceSections(raw, from, to)
+        sectionMatched = sliced.matched
+        sourceText = cleanExtract(sliced.text)
+        if (sourceText.length < 500) return NextResponse.json({ error: 'empty_extract' }, { status: 400 })
       }
+      // A scanned PDF has no text layer. The worker will OCR it after this
+      // request returns, so a book cannot time out the upload endpoint.
     }
 
     // Scoped to the user: the id is the primary key, while the "same chapter,

@@ -45,6 +45,59 @@ export async function pdfToTextCached(pdfPath: string, cacheDir: string) {
   }
 }
 
+/** OCR only for image-only PDFs. It runs in the durable generation worker, not the upload request. */
+export async function ocrPdfToText(pdfPath: string, cacheDir: string) {
+  const stat = await fs.stat(pdfPath)
+  const key = `${path.basename(pdfPath)}-${stat.size}-${Math.round(stat.mtimeMs)}.ocr.txt`
+  const cachePath = path.join(cacheDir, 'extracts', key)
+  const pageCacheDir = path.join(cacheDir, 'extracts', `${key}.pages`)
+  try { return await fs.readFile(cachePath, 'utf8') } catch { /* cache miss */ }
+
+  let pages: number
+  try {
+    const info = await run('pdfinfo', [pdfPath], { maxBuffer: 1024 * 1024 })
+    pages = Number(info.stdout.match(/^Pages:\s+(\d+)/m)?.[1] ?? 0)
+  } catch { throw new Error('Não foi possível ler a estrutura do PDF escaneado.') }
+  if (!pages) throw new Error('O PDF escaneado não tem páginas legíveis.')
+  if (pages > 200) {
+    throw new Error(`Este PDF tem ${pages} páginas escaneadas. Para OCR, envie um capítulo de até 200 páginas; não vamos resumir só uma parte sem avisar.`)
+  }
+
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'summario-ocr-'))
+  try {
+    await fs.mkdir(pageCacheDir, { recursive: true })
+    const output: string[] = []
+    for (let page = 1; page <= pages; page++) {
+      const pageCachePath = path.join(pageCacheDir, `${page}.txt`)
+      try {
+        output.push(await fs.readFile(pageCachePath, 'utf8'))
+        continue
+      } catch { /* this page still needs OCR */ }
+      const imageBase = path.join(tempDir, 'page')
+      try {
+        await run('pdftoppm', ['-f', String(page), '-l', String(page), '-r', '150', '-gray', '-singlefile', '-png', pdfPath, imageBase],
+          { timeout: 90_000, maxBuffer: 1024 * 1024 })
+        const ocr = await run('tesseract', [`${imageBase}.png`, 'stdout', '-l', 'por+eng'],
+          { timeout: 90_000, maxBuffer: 8 * 1024 * 1024 })
+        const pageText = `[Página ${page}]\n${ocr.stdout.trim()}`
+        await fs.writeFile(pageCachePath, pageText, 'utf8')
+        output.push(pageText)
+        await fs.unlink(`${imageBase}.png`)
+      } catch (err) {
+        const e = err as NodeJS.ErrnoException
+        if (e.code === 'ENOENT') throw new Error('OCR indisponível: instale Tesseract com os idiomas português e inglês.')
+        throw new Error(`Falha no OCR da página ${page}: ${e.message}`)
+      }
+    }
+    const text = output.join('\n\f\n')
+    await fs.mkdir(path.dirname(cachePath), { recursive: true })
+    await fs.writeFile(cachePath, text, 'utf8')
+    return text
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true })
+  }
+}
+
 /**
  * Slice the extract down to a section range, e.g. "7.1"–"7.6".
  * Falls back to the whole text when the markers are not found, and says so.

@@ -14,6 +14,8 @@ import { recordAudit } from './audit'
 import { deriveStudySet } from './derive'
 import { materialDir, runPipeline } from './pipeline'
 import { estimatedModelCost, estimatedSearchCost } from './model-pricing'
+import { cleanExtract, ocrPdfToText, sectionsFromScope, sliceSections } from './extract'
+import { config } from './config'
 import type { GenerationRequest, JobKind } from './types'
 
 /**
@@ -95,8 +97,19 @@ async function runJob(job: JobRow) {
 }
 
 async function runGenerate(job: JobRow) {
-  const req = JSON.parse(job.payload) as GenerationRequest
+  let req = JSON.parse(job.payload) as GenerationRequest
   const material = getMaterial(job.material_id)
+  if (req.sourceKind === 'upload' && req.sourceText.length < 500) {
+    if (!material?.source_file_ref) throw new Error('O PDF de apoio não está mais disponível.')
+    updateMaterial(job.material_id, { status: 'extracting', stage_detail: 'Lendo páginas escaneadas com OCR' })
+    const raw = await ocrPdfToText(material.source_file_ref, config.dataDir)
+    if (cleanExtract(raw.replace(/^\[Página \d+\][ \t]*$/gm, '')).length < 500) {
+      throw new Error('O OCR não conseguiu extrair texto suficiente deste PDF.')
+    }
+    const { from, to } = sectionsFromScope(req.description)
+    req = { ...req, sourceText: cleanExtract(sliceSections(raw, from, to).text) }
+    if (req.sourceText.length < 500) throw new Error('O OCR não conseguiu extrair texto suficiente deste PDF.')
+  }
   const autoStudySet = Boolean(material && !material.sandbox)
   const result = await runPipeline(req, {
     outDir: materialDir(job.material_id),

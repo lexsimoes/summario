@@ -1,0 +1,26 @@
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--rule); }
+.tabs button { border: 0; background: transparent; color: var(--muted); padding: 10px 12px; cursor: pointer; font: inherit; font-size: 14px; }
+.tabs button.active { color: var(--accent-ink); font-weight: 650; border-bottom: 2px solid var(--accent); }
+.panel { padding-top: 20px; }
+.messages { max-height: 520px; overflow-y: auto; display: grid; gap: 12px; margin: 18px 0; }
+.message { border: 1px solid var(--rule); border-radius: 12px; padding: 14px; }
+.ask { margin: 0 0 10px; }
+.answer { white-space: pre-wrap; margin: 0; line-height: 1.65; }
+.citations { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.sourceList { font-size: 13px; color: var(--muted); margin: 12px 0; }
+.sourceList ul { margin: 8px 0; padding-left: 22px; }
+.formRow { display: flex; gap: 8px; align-items: stretch; }
+.formRow input { flex: 1; min-width: 0; }
+.controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.controls label, .sectionSelect, .blockLabel { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.controls select, .sectionSelect select, .blockLabel textarea, .blockLabel input, .formRow input { border: 1px solid var(--rule); border-radius: 9px; background: white; color: var(--ink); padding: 9px 11px; font: inherit; }
+.controls select { max-width: 220px; }
+.practice { border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 18px; }
+.prompt { font-family: var(--serif); font-size: 18px; line-height: 1.5; }
+.sectionSelect select { width: 100%; }
+.sectionText { margin: 16px 0; border: 1px solid var(--rule); border-radius: 10px; padding: 16px; max-height: 380px; overflow: auto; user-select: text; }
+.sectionText h3 { margin: 0 0 10px; font-family: var(--serif); }
+.sectionText p { margin: 0; white-space: pre-wrap; line-height: 1.6; font-size: 14px; }
+.blockLabel { margin: 14px 0; }
+.blockLabel textarea { width: 100%; resize: vertical; }
+@media (max-width: 600px) { .formRow { flex-direction: column; } .controls { align-items: stretch; } }

@@ -10,8 +10,10 @@ Editing `src/lib/` changes the plumbing.
 
 ## Two ways to source a guide
 
-**From your own material.** Upload the book, give the section range, and nothing
-outside that slice is ever read.
+**From your own material.** Upload the book and give the section range. For a
+text PDF, the extracted text is sliced before it reaches the model. For a
+scanned PDF, OCR reads the pages locally first, then slices the result; the
+model still receives only the selected extract.
 
 **From the open web.** No textbook at hand? The platform searches for
 authoritative sources, reads the pages, and builds the extract from them — then
@@ -43,7 +45,7 @@ its contents; no code changes.
 ## Deploy
 
 Built as a container because the render step needs a real runtime: Chromium for
-the PDF, `pdftotext` for extraction, and a writable disk for the SQLite file and
+the PDF, Poppler and Tesseract for extraction/OCR, and a writable disk for the SQLite file and
 the generated documents. Serverless platforms cannot host it — their filesystem
 is ephemeral, the bundle cannot carry Chromium, and a generation takes minutes.
 
@@ -69,7 +71,8 @@ npm run dev                 # http://localhost:3000
 `npm run seed` also generates `SESSION_SECRET` into `.env` if it is missing, and
 grants a newly seeded owner its administrative credits. Re-running it resets that
 account's password. `pdftotext` must be on PATH: `brew install poppler` on macOS,
-`apt-get install poppler-utils` on Debian.
+`apt-get install poppler-utils` on Debian. OCR also requires `tesseract` with
+Portuguese and English language data (included in the Docker image).
 
 ## The site
 
@@ -115,12 +118,12 @@ would.
 
 | Stage | Work | Model |
 |---|---|---|
-| Ingestion | `pdftotext -layout`, section slicing, extract cache | none — pure code |
+| Ingestion | `pdftotext -layout`, OCR fallback for scans, section slicing, extract cache | none — pure code |
 | Plan | thematic blocks and unit counts as JSON | planner model, ~3k out |
 | Generate | one call per part, source block prompt-cached | guide model |
 | Render | Chromium prints the HTML, KaTeX served from disk | none — pure code |
 | Validate | content-quality + render-integrity checks | none — pure code |
-| Derive (on demand) | quiz, flashcards and project briefs from the guide's HTML | derivative model |
+| Derive (automatic) | quiz, flashcards and project briefs from the guide's HTML | derivative model |
 
 The plan step exists so a 20-page document does not drift, and so a single weak
 part can be regenerated without rebuilding the whole thing. The source extract is
@@ -149,9 +152,9 @@ npm run render -- fixtures/sample.html
 
 ## The study set
 
-The guide is the reference layer. Retrieval is a different job, and a finished
-guide grows the rest of it on demand — a button on the document page, no credit
-charged, regenerate whenever:
+The guide is the reference layer. Retrieval is a different job, queued
+automatically after a guide finishes. The document page lets the reader retry
+or regenerate it without using another credit:
 
 - **A retrieval quiz.** One question at a time, answer from memory, reveal, mark
   it hit or missed. The explanation and the classic trap come with the answer.
@@ -168,6 +171,14 @@ Derivatives read the **guide's HTML**, never the original PDF — roughly 70% fe
 tokens, and it keeps the cards consistent with the document the reader actually
 has. Free study sets use `ESTUDO_MODEL_FREE_DERIVATIVE`; Plus study sets use
 `ESTUDO_MODEL_PAID_DERIVATIVE`.
+
+The document page also has a guide workspace: grounded questions with section
+references, five-question practice batches by difficulty and weak concept, and
+private notes/highlights per section. These interactions use the derivative
+model for the account tier. Chat and practice have per-guide daily limits; their
+additional estimated API cost is shown on the page. Notes do not modify the
+generated PDF. Notes and chat are scoped to the exact guide version, so a
+regenerated guide never shows citations or highlights from an older version.
 
 ## The quality checks
 
@@ -228,8 +239,9 @@ script).
   than one person.
 - **Playwright needs a real runtime.** Vercel's serverless functions are a bad
   fit for the render step — Railway, Fly, or any container is safer.
-- **Scanned PDFs produce an empty extract.** OCR them first; the API refuses
-  anything under 500 characters rather than generating from nothing.
+- **OCR is for text in scans, not figure understanding.** Image-only PDFs up to
+  200 pages are OCRed in the background; longer scans must be split by chapter.
+  Complex diagrams and slide layouts are not yet interpreted visually.
 - **Credit purchase is not wired.** The single Plus pack (30 generations for USD 9)
   and the button in `/app/credits` are deliberately inert until a payment provider
   and checkout credentials are chosen.

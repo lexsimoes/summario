@@ -36,7 +36,7 @@ export function LoginForm({ t }: { t: Labels }) {
     <form onSubmit={onSubmit}>
       <div className="field">
         <label className="label" htmlFor="email">{t.email}</label>
-        <input className="input" id="email" name="email" type="email" autoComplete="email" required autoFocus />
+        <input className="input" id="email" name="email" type="email" autoComplete="username" required autoFocus />
       </div>
       <div className="field">
         <label className="label" htmlFor="password">{t.password}</label>

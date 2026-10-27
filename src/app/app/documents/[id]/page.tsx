@@ -16,22 +16,24 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   if (!m || m.user_id !== user.id) notFound()
 
   const { t, locale } = await tr()
-  const totalApiCost = m.api_cost_usd === null
-    ? null
-    : m.api_cost_usd + (m.derivative_api_cost_usd ?? 0)
+  const showOwnerTelemetry = user.plan === 'owner' || Boolean(m.sandbox)
+  const totalApiCost =
+    m.api_cost_usd === null ? null : m.api_cost_usd + (m.derivative_api_cost_usd ?? 0)
 
   return (
-    <div style={{ maxWidth: 760 }}>
-      <Link href="/app/history" className="small" style={{ color: 'var(--muted)' }}>← {t.app.material.back}</Link>
+    <div style={{ maxWidth: 880 }}>
+      <Link href="/app/history" className="small" style={{ color: 'var(--muted)' }}>
+        ← {t.app.material.back}
+      </Link>
 
       <h1 className="title" style={{ margin: '14px 0 6px' }}>{m.topic}</h1>
-      <p className="small" style={{ marginBottom: 30 }}>
+      <p className="small" style={{ marginBottom: 28 }}>
         {t.types[m.document_type]} · {t.languages[m.language]}
-        {m.model ? ` · ${m.model}` : ''}
+        {showOwnerTelemetry && m.model ? ` · ${m.model}` : ''}
         {m.description ? ` · ${m.description}` : ''}
       </p>
 
-      {totalApiCost !== null && (
+      {showOwnerTelemetry && totalApiCost !== null && (
         <div className="card" style={{ marginBottom: 22, paddingBlock: 16 }}>
           <div className="row-between">
             <span className="stat-label">Custo estimado total da API</span>

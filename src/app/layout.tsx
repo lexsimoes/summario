@@ -4,9 +4,12 @@ import type { ReactNode } from 'react'
 import { getLocale, dict } from '@/lib/i18n'
 
 export const metadata: Metadata = {
-  title: 'summario — study guides from your own material',
+  title: 'summario — guias de bolso imprimíveis e prática ativa para estudar temas densos',
   description:
-    'Upload a textbook, point at a chapter, get a print-ready pocket guide: intuition in your language, technical vocabulary in the language of the field.',
+    'Parta de um tema ou do seu PDF, identifique o essencial e estude por um guia A4 imprimível com quiz, flashcards, Anki, perguntas ao guia, treino nos erros e anotações. Em português, inglês ou bilíngue.',
+  other: {
+    'text-scale': 'scale',
+  },
 }
 
 /**

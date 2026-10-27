@@ -66,5 +66,5 @@ export const config = {
   // Everything except Next's static assets, the image optimiser and the favicon
   // family — none of which need a policy. The document-route exemption is in the
   // function above.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|summario-guia-exemplo.pdf).*)'],
 }

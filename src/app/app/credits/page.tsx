@@ -5,6 +5,8 @@ import { tr, type Dict } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
+const PLUS_RECHARGE_MAILTO = 'mailto:alexcot25@gmail.com?subject=Pacote%20Plus%20summario%20(30%20geracoes)'
+
 function reasonLabel(reason: string, materialTitle: string | null, t: Dict) {
   if (reason === 'generation') return materialTitle ?? t.app.nav.create
   if (reason.startsWith('refund')) return `${t.app.credits.colDelta} · refund${materialTitle ? ` — ${materialTitle}` : ''}`
@@ -15,9 +17,10 @@ function reasonLabel(reason: string, materialTitle: string | null, t: Dict) {
 export default async function Credits() {
   const user = await requireUser()
   const { t, locale } = await tr()
+  const pt = locale === 'pt'
   const credits = creditState(user)
   const ledger = listLedger(user.id)
-  const fmt = new Intl.DateTimeFormat(locale === 'pt' ? 'pt-BR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })
+  const fmt = new Intl.DateTimeFormat(pt ? 'pt-BR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })
 
   // Running balance, computed forward from the oldest entry so each row shows
   // the balance as it stood at that moment.
@@ -30,17 +33,26 @@ export default async function Credits() {
 
   return (
     <>
-      <h1 className="title" style={{ marginBottom: 4 }}>{t.app.credits.title}</h1>
-      <p className="small measure" style={{ marginBottom: 30 }}>{t.app.credits.lede}</p>
+      <p className="workspace-eyebrow">
+        {pt ? 'PACOTES DE CRÉDITOS · SEM ASSINATURA MENSAL' : 'CREDIT PACKS · NO MONTHLY SUBSCRIPTION'}
+      </p>
+      <h1 className="title" style={{ marginBottom: 6 }}>{t.app.credits.title}</h1>
+      <p className="small measure" style={{ marginBottom: 28 }}>{t.app.credits.lede}</p>
 
       <div className="grid g4" style={{ marginBottom: 32 }}>
         <div className="card">
           <div className="stat-value">{credits.unlimited ? '∞' : credits.balance}</div>
           <div className="stat-label" style={{ marginTop: 8 }}>{t.app.credits.balance}</div>
+          <p className="tiny" style={{ margin: '8px 0 0' }}>
+            {pt ? 'Créditos avulsos que nunca expiram' : 'One-time credits that never expire'}
+          </p>
         </div>
         <div className="card">
           <div className="stat-value">{credits.freeRemaining}/{FREE_MONTHLY_GUIDES}</div>
           <div className="stat-label" style={{ marginTop: 8 }}>{t.app.credits.freeMonthly}</div>
+          <p className="tiny" style={{ margin: '8px 0 0' }}>
+            {pt ? 'Pesquisa por tema na web · renova todo mês' : 'Web topic research · renews monthly'}
+          </p>
         </div>
         <div className="card">
           <div className="stat-value">{credits.spent}</div>
@@ -51,10 +63,24 @@ export default async function Credits() {
             </div>
           )}
         </div>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div className="stat-label">{t.app.credits.buy}</div>
-          <button className="btn btn-primary btn-block" disabled style={{ marginTop: 14 }}>{t.app.credits.buy}</button>
-          <p className="tiny" style={{ margin: '10px 0 0' }}>{t.app.credits.buySoon}</p>
+        <div className="card credits-plus-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div className="row-between" style={{ gap: 6 }}>
+              <span className="stat-label" style={{ color: 'var(--accent-deep)' }}>
+                {pt ? 'Pacote Plus · PDF incluído' : 'Plus Pack · PDF included'}
+              </span>
+              <span className="workspace-badge-plus">US$ 9</span>
+            </div>
+            <div className="stat-value" style={{ fontSize: '1.5rem', marginTop: 6 }}>
+              {pt ? '30 gerações' : '30 generations'}
+            </div>
+            <p className="tiny" style={{ margin: '4px 0 12px', color: 'var(--muted)' }}>
+              {pt ? 'Pagamento único · US$ 0,30/geração' : 'One-time payment · US$ 0.30/gen'}
+            </p>
+          </div>
+          <a className="btn btn-primary btn-sm btn-block" href={PLUS_RECHARGE_MAILTO}>
+            {pt ? 'Solicitar pacote Plus →' : 'Request Plus pack →'}
+          </a>
         </div>
       </div>
 

@@ -2,19 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
+import { SANDBOX_MODEL_OPTIONS } from '@/lib/sandbox-models'
 
 const MAX_PDF_BYTES = 100 * 1024 * 1024
-
-const MODELS = [
-  { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite — descontinuado', note: 'API desligada em 1º de junho de 2026', disabled: true },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite', note: 'legado econômico: USD 0,10 entrada / USD 0,40 saída por MTok' },
-  { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', note: 'mais barato do Gemini atual' },
-  { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', note: 'melhor custo-benefício promocional' },
-  { value: 'gpt-4o-mini', label: 'GPT-4o mini', note: 'referência legada barata' },
-  { value: 'gpt-5.4-mini', label: 'GPT-5.4 mini', note: 'Mini atual' },
-  { value: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', note: 'Mini moderno mais forte' },
-  { value: 'claude-opus-5', label: 'Claude Opus 5', note: 'controle de qualidade' },
-] as const
 
 export function SandboxForm() {
   const router = useRouter()
@@ -60,14 +50,14 @@ export function SandboxForm() {
     }
   }
 
-  const selected = MODELS.find((item) => item.value === model)!
+  const selected = SANDBOX_MODEL_OPTIONS.find((item) => item.value === model)!
 
   return (
     <form onSubmit={submit}>
       <div className="row" style={{ gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <select className="select" value={model} onChange={(e) => setModel(e.target.value)} style={{ flex: '1 1 260px' }}>
-          {MODELS.map((item) => (
-            <option key={item.value} value={item.value} disabled={'disabled' in item && item.disabled}>{item.label}</option>
+          {SANDBOX_MODEL_OPTIONS.map((item) => (
+            <option key={item.value} value={item.value} disabled={item.disabled}>{item.label}</option>
           ))}
         </select>
         <select className="select" value={language} onChange={(e) => setLanguage(e.target.value)} style={{ flex: '0 1 190px' }}>

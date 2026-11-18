@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 const env = (k: string, fallback: string) => process.env[k]?.trim() || fallback
+const DEFAULT_GUIDE_MODEL = 'gemini-4-hydrogen'
 
 export const config = {
   apiKey: process.env.ANTHROPIC_API_KEY ?? '',
@@ -8,14 +9,14 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   // Read lazily, so `npm run generate -- --model X` can override at runtime.
   models: {
-    /** Default for CLI runs and paid guides researched from the web. */
-    get guide() { return env('ESTUDO_MODEL_GUIDE', 'gpt-5.6-terra') },
-    /** Free guides are web-only and use the strongest cost-efficient Flash tier. */
-    get freeGuide() { return env('ESTUDO_MODEL_FREE_GUIDE', 'gemini-3.8-flash') },
+    /** Default for CLI runs. */
+    get guide() { return env('ESTUDO_MODEL_GUIDE', DEFAULT_GUIDE_MODEL) },
+    /** Free guides are web-only. */
+    get freeGuide() { return env('ESTUDO_MODEL_FREE_GUIDE', DEFAULT_GUIDE_MODEL) },
     /** Paid PDF guides do not need a separate web-research model. */
-    get paidUploadGuide() { return env('ESTUDO_MODEL_PAID_UPLOAD_GUIDE', 'gemini-3.8-flash') },
-    /** Paid web guides get the deeper research tier. */
-    get paidWebGuide() { return env('ESTUDO_MODEL_PAID_WEB_GUIDE', 'gpt-5.6-terra') },
+    get paidUploadGuide() { return env('ESTUDO_MODEL_PAID_UPLOAD_GUIDE', DEFAULT_GUIDE_MODEL) },
+    /** Paid guides researched from the web. */
+    get paidWebGuide() { return env('ESTUDO_MODEL_PAID_WEB_GUIDE', DEFAULT_GUIDE_MODEL) },
     /**
      * Defaults to the guide model on purpose. Outlining is structured enough for
      * a cheaper tier, but the prompt cache is per-model: pointing the planner at
@@ -26,7 +27,7 @@ export const config = {
     get planner() { return env('ESTUDO_MODEL_PLANNER', this.guide) },
     /** Free study sets stay inexpensive without losing structured-output quality. */
     get freeDerivative() { return env('ESTUDO_MODEL_FREE_DERIVATIVE', 'gpt-4o-mini') },
-    /** Plus study sets use the same Flash tier as PDF-backed guides. */
+    /** Plus study sets use Gemini Flash. */
     get paidDerivative() { return env('ESTUDO_MODEL_PAID_DERIVATIVE', 'gemini-3.8-flash') },
   },
   /**

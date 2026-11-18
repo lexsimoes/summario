@@ -511,6 +511,15 @@ export function updateMaterial(id: string, patch: Partial<MaterialRow>) {
 export const getMaterial = (id: string) =>
   getDb().prepare('SELECT * FROM materials WHERE id = ?').get(id) as MaterialRow | undefined
 
+export function findMaterialId(identity: {
+  userId: string; topic: string; language: LanguageMode; documentType: DocumentType; model: string
+}) {
+  const row = getDb().prepare(`SELECT id FROM materials WHERE user_id = @userId
+    AND topic = @topic AND language = @language AND document_type = @documentType AND model = @model`)
+    .get(identity) as { id: string } | undefined
+  return row?.id
+}
+
 export const listMaterials = (userId: string, limit = 200) =>
   getDb()
     .prepare('SELECT * FROM materials WHERE user_id = ? ORDER BY created_at DESC LIMIT ?')

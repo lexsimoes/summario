@@ -35,6 +35,7 @@ export async function researchTopic(opts: {
   maxSearches?: number
   model?: string
 }): Promise<Research> {
+  const model = opts.model ?? config.models.guide
   const instruction = [
     `Research this topic and produce the raw source material a study-guide generator will use as its ONLY source.`,
     '',
@@ -63,8 +64,8 @@ export async function researchTopic(opts: {
     .filter(Boolean)
     .join('\n')
 
-  if (opts.model?.startsWith('gemini-')) {
-    const result = await researchWithGoogle({ model: opts.model, instruction })
+  if (model.startsWith('gemini-')) {
+    const result = await researchWithGoogle({ model, instruction })
     return {
       text: result.text,
       sources: result.sources,
@@ -73,8 +74,8 @@ export async function researchTopic(opts: {
       searches: result.searches,
     }
   }
-  if (opts.model?.startsWith('gpt-')) {
-    const result = await researchWithOpenAI({ model: opts.model, instruction })
+  if (model.startsWith('gpt-')) {
+    const result = await researchWithOpenAI({ model, instruction })
     return {
       text: result.text,
       sources: result.sources,
@@ -85,7 +86,7 @@ export async function researchTopic(opts: {
   }
 
   const res = await anthropic().messages.create({
-    model: opts.model ?? config.models.guide,
+    model,
     max_tokens: 8000,
     tools: [
       {

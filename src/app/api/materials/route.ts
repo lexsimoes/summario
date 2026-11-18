@@ -6,13 +6,14 @@ import { requireUserApi } from '@/lib/api-auth'
 import { recordAudit } from '@/lib/audit'
 import { clientIp } from '@/lib/rate-limit'
 import {
-  claimMonthlyFreeGuide, createMaterial, ledgerTotals, listMaterials, releaseMonthlyFreeGuide,
+  claimMonthlyFreeGuide, createMaterial, findMaterialId, getMaterial, ledgerTotals, listMaterials, releaseMonthlyFreeGuide,
 } from '@/lib/db'
 import { chargeCredits, COST, FREE_MONTHLY_GUIDES } from '@/lib/credits'
 import { config } from '@/lib/config'
 import { cleanExtract, pdfToTextCached, sectionsFromScope, sliceSections } from '@/lib/extract'
 import { enqueueJob } from '@/lib/jobs'
 import { themeFor } from '@/lib/design'
+import { SANDBOX_MODEL_OPTIONS } from '@/lib/sandbox-models'
 import type { DocumentType, LanguageMode, SourceKind } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -22,15 +23,7 @@ export const maxDuration = 60
 // back to the form later.
 const TYPE_SUFFIX: Record<DocumentType, string> = { pocket_guide: 'pg', exam_review: 'rev' }
 const MAX_PDF_BYTES = 100 * 1024 * 1024
-const SANDBOX_MODELS = new Set([
-  'claude-opus-5',
-  'gemini-2.5-flash-lite',
-  'gemini-3.5-flash-lite',
-  'gemini-3.8-flash',
-  'gpt-4o-mini',
-  'gpt-5.4-mini',
-  'gpt-5.6-terra',
-])
+const SANDBOX_MODELS = new Set(SANDBOX_MODEL_OPTIONS.filter((model) => !model.disabled).map((model) => model.value))
 
 export async function GET() {
   const user = await requireUserApi()
@@ -114,11 +107,8 @@ export async function POST(req: Request) {
       // request returns, so a book cannot time out the upload endpoint.
     }
 
-    // Scoped to the user: the id is the primary key, while the "same chapter,
-    // same language" rule is a per-user unique index. Without the prefix, two
-    // users generating the same topic collide on the primary key and the second
-    // insert throws instead of updating. It stays deterministic, so regenerating
-    // a document keeps its URL and its folder on disk.
+    // Regenerating the same guide/model keeps its URL. A model change can leave
+    // the preferred URL occupied by the older guide, which remains available.
     const slug = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     const model = requestedModel || (
       paid
@@ -126,7 +116,9 @@ export async function POST(req: Request) {
         : config.models.freeGuide
     )
     const modelSuffix = requestedModel ? `-${requestedModel.replace(/[^a-z0-9]+/g, '-')}` : ''
-    const id = `${user.id.slice(0, 8)}-${slug}-${language}-${TYPE_SUFFIX[documentType]}${modelSuffix}`
+    const preferredId = `${user.id.slice(0, 8)}-${slug}-${language}-${TYPE_SUFFIX[documentType]}${modelSuffix}`
+    const id = findMaterialId({ userId: user.id, topic, language, documentType, model })
+      ?? (getMaterial(preferredId) ? `${preferredId}-${randomUUID()}` : preferredId)
 
     // Purchased generations are used first. With no balance, reserve one of the
     // five monthly web-guide slots atomically.
